@@ -1,0 +1,93 @@
+service: listing
+frameworkVersion: '>=1.28.0 <2.0.0'
+
+provider:
+  name: aws
+  runtime: go1.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  usagePlan:
+    throttle:
+      burstLimit: 10
+      rateLimit: 2
+
+plugins:
+  - serverless-localstack
+  - serverless-iam-roles-per-function
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./bin/**
+
+functions:
+  listing:
+    handler: bin/listing
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+    environment:
+      TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
+      API_TOKEN: ${self:custom.secrets.apiToken}
+      SUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.subscribeRedirectUrl}
+      UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
+      DYNAMO_TABLE: ${self:custom.tableName}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "ses:SendEmail"
+          - "ses:SendRawEmail"
+        Resource: "arn:aws:ses:${self:provider.region}:*:identity/*"
+      - Effect: Allow
+        Action:
+          - "dynamodb:DescribeTable"
+          - "dynamodb:Query"
+          - "dynamodb:Scan"
+          - "dynamodb:GetItem"
+          - "dynamodb:PutItem"
+          - "dynamodb:UpdateItem"
+          - "dynamodb:DeleteItem"
+        Resource:
+          - "Fn::GetAtt": [ SubscriptionsDynamoDBTable, Arn ]
+
+resources:
+  Resources:
+    SubscriptionsDynamoDBTable:
+      Type: 'AWS::DynamoDB::Table'
+      TableName: ${self:custom.tableName}
+      AttributeDefinitions:
+        - AttributeName: newsletter
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: newsletter
+          KeyType: HASH
+        - AttributeName: email
+          KeyType: RANGE
+       # Set the capacity to auto-scale
+      BillingMode: PAY_PER_REQUEST
+
+custom:
+  secrets: ${file(secrets.json)}
+  tableName: ${self:provider.stage}-subscribers
+  stages:
+    - local
+    - dev
+  localstack:
+    debug: true
+    stages:
+      # list of stages for which the plugin should be enabled
+      - local
+    host: http://localhost  # optional - LocalStack host to connect to
+    autostart: false  # optional - start LocalStack in Docker on Serverless deploy
+    lambda:
+      # Enable this flag to improve performance
+      mountCode: false
+    docker:
+      # Enable this flag to run "docker ..." commands as sudo
+      sudo: false
+
