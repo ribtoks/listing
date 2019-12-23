@@ -1,0 +1,10 @@
+{
+  "name": "listing",
+  "description": "",
+  "version": "0.1.0",
+  "dependencies": {},
+  "devDependencies": {
+    "serverless-iam-roles-per-function": "^2.0.2",
+    "serverless-localstack": "^0.4.19"
+  }
+}
