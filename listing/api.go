@@ -16,6 +16,7 @@ type NewsletterResource struct {
 	confirmURL     string
 	newsletters    map[string]bool
 	store          Store
+	mailer         Mailer
 }
 
 const (
@@ -123,6 +124,9 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 	}
 
 	log.Printf("subscribed email %q to %q", email, newsletter)
+
+	nr.mailer.SendConfirmation(newsletter, email, nr.confirmURL)
+
 	w.Header().Set("Location", nr.subscribeURL)
 	http.Redirect(w, r, nr.subscribeURL, http.StatusFound)
 }

@@ -22,6 +22,12 @@ const (
 	apiToken            = "qwerty123456"
 )
 
+type DevNullMailer struct{}
+
+func (m *DevNullMailer) SendConfirmation(newsletter, email string, confirmUrl string) error {
+	return nil
+}
+
 type MapStore struct {
 	items map[string]*Subscriber
 }
@@ -83,6 +89,7 @@ func NewTestResource(router *http.ServeMux, store Store) *NewsletterResource {
 		secret:      secret,
 		apiToken:    apiToken,
 		newsletters: make(map[string]bool),
+		mailer:      &DevNullMailer{},
 	}
 	return newsletters
 }

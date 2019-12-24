@@ -35,6 +35,7 @@ provider:
     CONFIRM_REDIRECT_URL: ${self:custom.secrets.RedirectUrl}
     SUPPORTED_NEWSLETTERS: ${self:custom.secrets.supportedNewsletters}
     DYNAMO_TABLE: ${self:custom.tableName}
+    EMAIL_FROM: ${self:custom.secrets.emailFrom}
 
 plugins:
   - serverless-localstack

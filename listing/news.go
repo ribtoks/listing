@@ -22,10 +22,9 @@ type Subscriber struct {
 	BouncedAt      time.Time `json:"bounced_at"`
 }
 
-// New returns a new mailing list store with default AWS credentials.
-func NewStore(table string) *DynamoDBStore {
+func NewStore(table string, sess *session.Session) *DynamoDBStore {
 	return &DynamoDBStore{
-		Client:    dynamodb.New(session.New(aws.NewConfig())),
+		Client:    dynamodb.New(sess),
 		TableName: table,
 	}
 }

@@ -2,18 +2,29 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"os"
 	"strings"
+	"text/template"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 )
 
 var (
 	handlerLambda *httpadapter.HandlerAdapter
 	newsletter    *NewsletterResource
+	HtmlTemplate  *template.Template
+	TextTemplate  *template.Template
+)
+
+const (
+	contextSessionKey = "ctx_sess"
 )
 
 // Response is of type APIGatewayProxyResponse since we're leveraging the
@@ -24,11 +35,13 @@ type Response events.APIGatewayProxyResponse
 type Request events.APIGatewayProxyRequest
 
 func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// If no name is provided in the HTTP request body, throw an error
 	return handlerLambda.ProxyWithContext(ctx, req)
 }
 
 func main() {
+	HtmlTemplate = template.Must(template.New("HtmlBody").Parse(HtmlBody))
+	TextTemplate = template.Must(template.New("TextBody").Parse(TextBody))
+
 	secret := os.Getenv("TOKEN_SECRET")
 	apiToken := os.Getenv("API_TOKEN")
 	subscribeURL := os.Getenv("SUBSCRIBE_REDIRECT_URL")
@@ -36,6 +49,21 @@ func main() {
 	confirmURL := os.Getenv("CONFIRM_REDIRECT_URL")
 	tableName := os.Getenv("DYNAMO_TABLE")
 	supportedNewsletters := os.Getenv("SUPPORTED_NEWSLETTERS")
+	emailFrom := os.Getenv("EMAIL_FROM")
+
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(os.Getenv("AWS_REGION")),
+	})
+
+	if err != nil {
+		log.Fatalf("Failed to create AWS session. err=%v", err)
+	}
+
+	store := NewStore(tableName, sess)
+	mailer := &SESMailer{
+		svc:    ses.New(sess),
+		sender: emailFrom,
+	}
 
 	router := http.NewServeMux()
 	newsletter := &NewsletterResource{
@@ -44,7 +72,8 @@ func main() {
 		subscribeURL:   subscribeURL,
 		unsubscribeURL: unsubscribeURL,
 		confirmURL:     confirmURL,
-		store:          NewStore(tableName),
+		store:          store,
+		mailer:         mailer,
 		newsletters:    make(map[string]bool),
 	}
 
