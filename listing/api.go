@@ -9,14 +9,15 @@ import (
 )
 
 type NewsletterResource struct {
-	apiToken       string
-	secret         string
-	subscribeURL   string
-	unsubscribeURL string
-	confirmURL     string
-	newsletters    map[string]bool
-	store          Store
-	mailer         Mailer
+	apiToken               string
+	secret                 string
+	subscribeRedirectUrl   string
+	unsubscribeRedirectUrl string
+	confirmRedirectUrl     string
+	confirmUrl             string
+	newsletters            map[string]bool
+	store                  Store
+	mailer                 Mailer
 }
 
 const (
@@ -76,14 +77,9 @@ func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	b, err := json.Marshal(emails)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(b)
+	json.NewEncoder(w).Encode(emails)
 }
 
 // subscribe route.
@@ -125,10 +121,10 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 
 	log.Printf("subscribed email %q to %q", email, newsletter)
 
-	nr.mailer.SendConfirmation(newsletter, email, nr.confirmURL)
+	nr.mailer.SendConfirmation(newsletter, email, nr.confirmUrl)
 
-	w.Header().Set("Location", nr.subscribeURL)
-	http.Redirect(w, r, nr.subscribeURL, http.StatusFound)
+	w.Header().Set("Location", nr.subscribeRedirectUrl)
+	http.Redirect(w, r, nr.subscribeRedirectUrl, http.StatusFound)
 }
 
 // unsubscribe route.
@@ -171,8 +167,8 @@ func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request
 	}
 
 	log.Printf("unsubscribed email %q from %q", email, newsletter)
-	w.Header().Set("Location", nr.unsubscribeURL)
-	http.Redirect(w, r, nr.unsubscribeURL, http.StatusFound)
+	w.Header().Set("Location", nr.unsubscribeRedirectUrl)
+	http.Redirect(w, r, nr.unsubscribeRedirectUrl, http.StatusFound)
 }
 
 func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
@@ -214,6 +210,6 @@ func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("confirmed email %q from %q", email, newsletter)
-	w.Header().Set("Location", nr.confirmURL)
-	http.Redirect(w, r, nr.confirmURL, http.StatusFound)
+	w.Header().Set("Location", nr.confirmRedirectUrl)
+	http.Redirect(w, r, nr.confirmRedirectUrl, http.StatusFound)
 }

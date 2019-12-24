@@ -26,13 +26,10 @@ provider:
         - "dynamodb:UpdateItem"
         - "dynamodb:DeleteItem"
       Resource:
-        - "Fn::GetAtt": [ SubscriptionsDynamoDBTable, Arn ]
+        - { 'Fn::ImportValue': '${self:provider.stage}-SubscriptionsTableArn' }
   environment:
     TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
     API_TOKEN: ${self:custom.secrets.apiToken}
-    SUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.subscribeRedirectUrl}
-    UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
-    CONFIRM_REDIRECT_URL: ${self:custom.secrets.RedirectUrl}
     SUPPORTED_NEWSLETTERS: ${self:custom.secrets.supportedNewsletters}
     DYNAMO_TABLE: ${self:custom.tableName}
     EMAIL_FROM: ${self:custom.secrets.emailFrom}
@@ -54,6 +51,10 @@ functions:
           path: subscribe
           method: POST
           cors: true
+    environment:
+      SUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.subscribeRedirectUrl}
+      CONFIRM_URL: ${self:custom.secrets.confirmUrl}
+
   listing-unsubscribe:
     handler: bin/listing
     events:
@@ -61,6 +62,8 @@ functions:
           path: unsubscribe
           method: GET
           cors: true
+    environment:
+      UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
   listing-confirm:
     handler: bin/listing
     events:
@@ -68,6 +71,8 @@ functions:
           path: confirm
           method: GET
           cors: true
+    environment:
+      CONFIRM_REDIRECT_URL: ${self:custom.secrets.confirmRedirectUrl}
   listing-subscribers:
     handler: bin/listing
     events:

@@ -44,9 +44,10 @@ func main() {
 
 	secret := os.Getenv("TOKEN_SECRET")
 	apiToken := os.Getenv("API_TOKEN")
-	subscribeURL := os.Getenv("SUBSCRIBE_REDIRECT_URL")
-	unsubscribeURL := os.Getenv("UNSUBSCRIBE_REDIRECT_URL")
-	confirmURL := os.Getenv("CONFIRM_REDIRECT_URL")
+	subscribeRedirectUrl := os.Getenv("SUBSCRIBE_REDIRECT_URL")
+	unsubscribeRedirectUrl := os.Getenv("UNSUBSCRIBE_REDIRECT_URL")
+	confirmRedirectUrl := os.Getenv("CONFIRM_REDIRECT_URL")
+	confirmUrl := os.Getenv("CONFIRM_URL")
 	tableName := os.Getenv("DYNAMO_TABLE")
 	supportedNewsletters := os.Getenv("SUPPORTED_NEWSLETTERS")
 	emailFrom := os.Getenv("EMAIL_FROM")
@@ -63,18 +64,20 @@ func main() {
 	mailer := &SESMailer{
 		svc:    ses.New(sess),
 		sender: emailFrom,
+		secret: secret,
 	}
 
 	router := http.NewServeMux()
 	newsletter := &NewsletterResource{
-		apiToken:       apiToken,
-		secret:         secret,
-		subscribeURL:   subscribeURL,
-		unsubscribeURL: unsubscribeURL,
-		confirmURL:     confirmURL,
-		store:          store,
-		mailer:         mailer,
-		newsletters:    make(map[string]bool),
+		apiToken:               apiToken,
+		secret:                 secret,
+		subscribeRedirectUrl:   subscribeRedirectUrl,
+		unsubscribeRedirectUrl: unsubscribeRedirectUrl,
+		confirmRedirectUrl:     confirmRedirectUrl,
+		confirmUrl:             confirmUrl,
+		store:                  store,
+		mailer:                 mailer,
+		newsletters:            make(map[string]bool),
 	}
 
 	sn := strings.Split(supportedNewsletters, ";")

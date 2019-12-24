@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"log"
+	"net/url"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -39,10 +40,29 @@ type Mailer interface {
 
 type SESMailer struct {
 	sender string
+	secret string
 	svc    *ses.SES
 }
 
-func (sm *SESMailer) SendConfirmation(newsletter, email string, confirmUrl string) error {
+func (sm *SESMailer) confirmUrl(newsletter, email string, confirmBaseUrl string) (string, error) {
+	token := Sign(sm.secret, email)
+	baseUrl, err := url.Parse(confirmBaseUrl)
+	if err != nil {
+		log.Println("Malformed URL: ", err.Error())
+		return "", err
+	}
+	params := url.Values{}
+	params.Add(paramNewsletter, newsletter)
+	params.Add(paramToken, token)
+	baseUrl.RawQuery = params.Encode()
+	return baseUrl.String(), nil
+}
+
+func (sm *SESMailer) SendConfirmation(newsletter, email string, confirmBaseUrl string) error {
+	confirmUrl, err := sm.confirmUrl(newsletter, email, confirmBaseUrl)
+	if err != nil {
+		return err
+	}
 	data := struct {
 		Newsletter string
 		ConfirmUrl string

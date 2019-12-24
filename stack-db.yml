@@ -1,0 +1,33 @@
+service: listing-db
+frameworkVersion: '>=1.28.0 <2.0.0'
+
+resources:
+  Resources:
+    SubscriptionsDynamoDBTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        TableName: ${self:custom.tableName}
+        AttributeDefinitions:
+          - AttributeName: newsletter
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: newsletter
+            KeyType: HASH
+          - AttributeName: email
+            KeyType: RANGE
+         # Set the capacity to auto-scale
+        BillingMode: PAY_PER_REQUEST
+
+custom:
+  tableName: ${self:provider.stage}-subscribers
+
+Outputs:
+  SubscriptionsDynamoDBTable:
+    Value:
+      Fn::GetAtt:
+        - SubscriptionsDynamoDBTable
+        - Arn
+    Export:
+      Name: ${self:provider.stage}-SubscriptionsTableArn

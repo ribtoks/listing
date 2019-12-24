@@ -2,6 +2,7 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,13 +14,13 @@ import (
 
 // item model.
 type Subscriber struct {
-	Newsletter     string    `json:"newsletter"`
-	Email          string    `json:"email"`
-	CreatedAt      time.Time `json:"created_at"`
-	UnsubscribedAt time.Time `json:"unsubscribed_at"`
-	ConfirmedAt    time.Time `json:"confirmed_at"`
-	ComplainedAt   time.Time `json:"complained_at"`
-	BouncedAt      time.Time `json:"bounced_at"`
+	Newsletter     string   `json:"newsletter"`
+	Email          string   `json:"email"`
+	CreatedAt      JSONTime `json:"created_at"`
+	UnsubscribedAt JSONTime `json:"unsubscribed_at"`
+	ConfirmedAt    JSONTime `json:"confirmed_at"`
+	ComplainedAt   JSONTime `json:"complained_at"`
+	BouncedAt      JSONTime `json:"bounced_at"`
 }
 
 func NewStore(table string, sess *session.Session) *DynamoDBStore {
@@ -50,10 +51,10 @@ func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
 	i, err := dynamodbattribute.MarshalMap(Subscriber{
 		Newsletter:   newsletter,
 		Email:        email,
-		CreatedAt:    time.Now(),
-		ConfirmedAt:  time.Unix(1, 1),
-		ComplainedAt: time.Unix(1, 1),
-		BouncedAt:    time.Unix(1, 1),
+		CreatedAt:    JSONTime{Time: time.Now()},
+		ConfirmedAt:  JSONTime{Time: time.Unix(1, 1)},
+		ComplainedAt: JSONTime{Time: time.Unix(1, 1)},
+		BouncedAt:    JSONTime{Time: time.Unix(1, 1)},
 	})
 
 	if err != nil {
@@ -73,7 +74,7 @@ func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
 }
 
 func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
-	unsubscribeTime := time.Now().String()
+	unsubscribeTime := time.Now().Format(jsonTimeLayout)
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":unsubscribeTime": {
@@ -109,12 +110,16 @@ func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscr
 	}
 
 	err = s.Client.QueryPages(query, func(page *dynamodb.QueryOutput, more bool) bool {
-		for _, item := range page.Items {
-			i := &Subscriber{}
-			if err := dynamodbattribute.UnmarshalMap(item, &i); err == nil {
-				subscribers = append(subscribers, i)
-			}
+		var items []*Subscriber
+		err := dynamodbattribute.UnmarshalListOfMaps(page.Items, &items)
+		if err != nil {
+			// print the error and continue receiving pages
+			log.Printf("\nCould not unmarshal AWS data: err = %v\n", err)
+			return true
 		}
+
+		subscribers = append(subscribers, items...)
+		// continue receiving pages (can be used to limit the number of pages)
 		return true
 	})
 
@@ -122,7 +127,7 @@ func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscr
 }
 
 func (s *DynamoDBStore) ConfirmSubscriber(newsletter, email string) error {
-	confirmTime := time.Now().String()
+	confirmTime := time.Now().Format(jsonTimeLayout)
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":confirmTime": {
