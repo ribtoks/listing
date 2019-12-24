@@ -8,7 +8,7 @@ clean:
 	rm -rf ./bin ./vendor ./.serverless Gopkg.lock
 
 deploy: clean build
-	sls deploy --stage dev --region "us-east-1" --verbose
+	sls deploy --config serverless-api.yml --stage dev --region "us-east-1" --verbose
 
 local: clean build
 	./scripts/deploy_local.sh

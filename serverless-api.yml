@@ -81,25 +81,6 @@ functions:
           method: GET
           cors: true
 
-resources:
-  Resources:
-    SubscriptionsDynamoDBTable:
-      Type: 'AWS::DynamoDB::Table'
-      Properties:
-        TableName: ${self:custom.tableName}
-        AttributeDefinitions:
-          - AttributeName: newsletter
-            AttributeType: S
-          - AttributeName: email
-            AttributeType: S
-        KeySchema:
-          - AttributeName: newsletter
-            KeyType: HASH
-          - AttributeName: email
-            KeyType: RANGE
-         # Set the capacity to auto-scale
-        BillingMode: PAY_PER_REQUEST
-
 custom:
   secrets: ${file(secrets.json)}
   tableName: ${self:provider.stage}-subscribers

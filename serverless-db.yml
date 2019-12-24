@@ -1,6 +1,9 @@
 service: listing-db
 frameworkVersion: '>=1.28.0 <2.0.0'
 
+provider:
+  name: aws
+
 resources:
   Resources:
     SubscriptionsDynamoDBTable:
@@ -19,15 +22,16 @@ resources:
             KeyType: RANGE
          # Set the capacity to auto-scale
         BillingMode: PAY_PER_REQUEST
+  Outputs:
+    SubscriptionsTableArn:
+      Description: The ARN of the subscription table
+      Value:
+        Fn::GetAtt:
+          - SubscriptionsDynamoDBTable
+          - Arn
+      Export:
+        Name: ${self:provider.stage}-SubscriptionsTableArn
 
 custom:
-  tableName: ${self:provider.stage}-subscribers
+  tableName: ${opt:stage, 'dev'}-subscribers
 
-Outputs:
-  SubscriptionsDynamoDBTable:
-    Value:
-      Fn::GetAtt:
-        - SubscriptionsDynamoDBTable
-        - Arn
-    Export:
-      Name: ${self:provider.stage}-SubscriptionsTableArn

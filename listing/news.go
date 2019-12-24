@@ -49,12 +49,13 @@ var _ Store = (*DynamoDBStore)(nil)
 // AddSubscriber adds a subscriber to a newsletter.
 func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
 	i, err := dynamodbattribute.MarshalMap(Subscriber{
-		Newsletter:   newsletter,
-		Email:        email,
-		CreatedAt:    JSONTime{Time: time.Now()},
-		ConfirmedAt:  JSONTime{Time: time.Unix(1, 1)},
-		ComplainedAt: JSONTime{Time: time.Unix(1, 1)},
-		BouncedAt:    JSONTime{Time: time.Unix(1, 1)},
+		Newsletter:     newsletter,
+		Email:          email,
+		CreatedAt:      JSONTime(time.Now()),
+		ConfirmedAt:    JSONTime(time.Unix(1, 1)),
+		ComplainedAt:   JSONTime(time.Unix(1, 1)),
+		UnsubscribedAt: JSONTime(time.Unix(1, 1)),
+		BouncedAt:      JSONTime(time.Unix(1, 1)),
 	})
 
 	if err != nil {
@@ -74,7 +75,7 @@ func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
 }
 
 func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
-	unsubscribeTime := time.Now().Format(jsonTimeLayout)
+	unsubscribeTime := JSONTime(time.Now()).String()
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":unsubscribeTime": {
@@ -127,7 +128,7 @@ func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscr
 }
 
 func (s *DynamoDBStore) ConfirmSubscriber(newsletter, email string) error {
-	confirmTime := time.Now().Format(jsonTimeLayout)
+	confirmTime := JSONTime(time.Now()).String()
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":confirmTime": {

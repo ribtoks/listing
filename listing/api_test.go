@@ -47,11 +47,11 @@ func (s *MapStore) AddSubscriber(newsletter, email string) error {
 	s.items[key] = &Subscriber{
 		Newsletter:     newsletter,
 		Email:          email,
-		CreatedAt:      time.Now(),
-		ConfirmedAt:    time.Unix(1, 1),
-		UnsubscribedAt: time.Unix(1, 1),
-		ComplainedAt:   time.Unix(1, 1),
-		BouncedAt:      time.Unix(1, 1),
+		CreatedAt:      JSONTime(time.Now()),
+		ConfirmedAt:    JSONTime(time.Unix(1, 1)),
+		UnsubscribedAt: JSONTime(time.Unix(1, 1)),
+		ComplainedAt:   JSONTime(time.Unix(1, 1)),
+		BouncedAt:      JSONTime(time.Unix(1, 1)),
 	}
 	return nil
 }
@@ -59,7 +59,7 @@ func (s *MapStore) AddSubscriber(newsletter, email string) error {
 func (s *MapStore) RemoveSubscriber(newsletter, email string) error {
 	key := s.key(newsletter, email)
 	if i, ok := s.items[key]; ok {
-		i.UnsubscribedAt = time.Now()
+		i.UnsubscribedAt = JSONTime(time.Now())
 		return nil
 	}
 	return errors.New("Subscriber does not exist")
@@ -77,7 +77,7 @@ func (s *MapStore) GetSubscribers(newsletter string) (subscribers []*Subscriber,
 func (s *MapStore) ConfirmSubscriber(newsletter, email string) error {
 	key := s.key(newsletter, email)
 	if i, ok := s.items[key]; ok {
-		i.ConfirmedAt = time.Now()
+		i.ConfirmedAt = JSONTime(time.Now())
 		return nil
 	}
 	return errors.New("Subscriber does not exist")
@@ -236,7 +236,7 @@ func TestConfirmSubscribe(t *testing.T) {
 	}
 
 	i := store.items[store.key(newsletter, email)]
-	if i.ConfirmedAt.Sub(i.CreatedAt) < 0 {
+	if i.ConfirmedAt.Time().Sub(i.CreatedAt.Time()) < 0 {
 		t.Errorf("Confirm time not updated")
 	}
 }
@@ -520,7 +520,7 @@ func TestUnsubscribe(t *testing.T) {
 	}
 
 	i := store.items[store.key(newsletter, email)]
-	if i.UnsubscribedAt.Sub(i.CreatedAt) < 0 {
+	if i.UnsubscribedAt.Time().Sub(i.CreatedAt.Time()) < 0 {
 		t.Errorf("Unsubscribe time not updated")
 	}
 }
