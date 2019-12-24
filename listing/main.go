@@ -33,6 +33,7 @@ func main() {
 	apiToken := os.Getenv("API_TOKEN")
 	subscribeURL := os.Getenv("SUBSCRIBE_REDIRECT_URL")
 	unsubscribeURL := os.Getenv("UNSUBSCRIBE_REDIRECT_URL")
+	confirmURL := os.Getenv("CONFIRM_REDIRECT_URL")
 	tableName := os.Getenv("DYNAMO_TABLE")
 	supportedNewsletters := os.Getenv("SUPPORTED_NEWSLETTERS")
 
@@ -42,6 +43,7 @@ func main() {
 		secret:         secret,
 		subscribeURL:   subscribeURL,
 		unsubscribeURL: unsubscribeURL,
+		confirmURL:     confirmURL,
 		store:          NewStore(tableName),
 		newsletters:    make(map[string]bool),
 	}

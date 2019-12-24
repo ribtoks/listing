@@ -13,14 +13,21 @@ type NewsletterResource struct {
 	secret         string
 	subscribeURL   string
 	unsubscribeURL string
+	confirmURL     string
 	newsletters    map[string]bool
 	store          Store
 }
+
+const (
+	paramNewsletter = "newsletter"
+	paramToken      = "token"
+)
 
 func (nr *NewsletterResource) Setup(router *http.ServeMux) {
 	router.HandleFunc("/subscribers", nr.auth(nr.subscribers))
 	router.HandleFunc("/subscribe", nr.subscribe)
 	router.HandleFunc("/unsubscribe", nr.unsubscribe)
+	router.HandleFunc("/confirm", nr.confirm)
 }
 
 func (nr *NewsletterResource) AddNewsletters(n []string) {
@@ -54,7 +61,7 @@ func (nr *NewsletterResource) isValidNewsletter(n string) bool {
 
 // subscribers route.
 func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request) {
-	newsletter := r.URL.Query().Get("newsletter")
+	newsletter := r.URL.Query().Get(paramNewsletter)
 
 	if newsletter == "" {
 		http.Error(w, "The newsletter query-string parameter is required", http.StatusBadRequest)
@@ -92,7 +99,7 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	newsletter := r.FormValue("newsletter")
+	newsletter := r.FormValue(paramNewsletter)
 	email := r.FormValue("email")
 
 	err = checkmail.ValidateFormat(email)
@@ -127,11 +134,16 @@ func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	newsletter := r.URL.Query().Get("newsletter")
-	unsubscribeToken := r.URL.Query().Get("token")
+	newsletter := r.URL.Query().Get(paramNewsletter)
+	unsubscribeToken := r.URL.Query().Get(paramToken)
 
 	if newsletter == "" {
 		http.Error(w, "The newsletter query-string parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	if !nr.isValidNewsletter(newsletter) {
+		http.Error(w, "Invalid newsletter param", http.StatusBadRequest)
 		return
 	}
 
@@ -157,4 +169,47 @@ func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request
 	log.Printf("unsubscribed email %q from %q", email, newsletter)
 	w.Header().Set("Location", nr.unsubscribeURL)
 	http.Redirect(w, r, nr.unsubscribeURL, http.StatusFound)
+}
+
+func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	newsletter := r.URL.Query().Get(paramNewsletter)
+	subscribeToken := r.URL.Query().Get(paramToken)
+
+	if newsletter == "" {
+		http.Error(w, "The newsletter query-string parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	if !nr.isValidNewsletter(newsletter) {
+		http.Error(w, "Invalid newsletter param", http.StatusBadRequest)
+		return
+	}
+
+	if subscribeToken == "" {
+		http.Error(w, "The token query-string parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	email, ok := Unsign(nr.secret, subscribeToken)
+	if !ok {
+		log.Printf("error unsigning %q", subscribeToken)
+		http.Error(w, "Invalid subscribe token", http.StatusBadRequest)
+		return
+	}
+
+	err := nr.store.ConfirmSubscriber(newsletter, email)
+	if err != nil {
+		log.Printf("error confirming %q: %v", email, err)
+		http.Error(w, "Error confirming subscription", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("confirmed email %q from %q", email, newsletter)
+	w.Header().Set("Location", nr.confirmURL)
+	http.Redirect(w, r, nr.confirmURL, http.StatusFound)
 }

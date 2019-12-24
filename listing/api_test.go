@@ -17,6 +17,7 @@ const (
 	subscribeEndpoint   = "/subscribe"
 	subscribersEndpoint = "/subscribers"
 	unsubscribeEndpoint = "/unsubscribe"
+	confirmEndpoint     = "/confirm"
 	secret              = "secret123"
 	apiToken            = "qwerty123456"
 )
@@ -38,23 +39,24 @@ func (s *MapStore) AddSubscriber(newsletter, email string) error {
 	}
 
 	s.items[key] = &Subscriber{
-		Newsletter:   newsletter,
-		Email:        email,
-		CreatedAt:    time.Now(),
-		ConfirmedAt:  time.Unix(1, 1),
-		ComplainedAt: time.Unix(1, 1),
-		BouncedAt:    time.Unix(1, 1),
+		Newsletter:     newsletter,
+		Email:          email,
+		CreatedAt:      time.Now(),
+		ConfirmedAt:    time.Unix(1, 1),
+		UnsubscribedAt: time.Unix(1, 1),
+		ComplainedAt:   time.Unix(1, 1),
+		BouncedAt:      time.Unix(1, 1),
 	}
 	return nil
 }
 
 func (s *MapStore) RemoveSubscriber(newsletter, email string) error {
 	key := s.key(newsletter, email)
-	if _, ok := s.items[key]; !ok {
-		return errors.New("Subscriber does not exist")
+	if i, ok := s.items[key]; ok {
+		i.UnsubscribedAt = time.Now()
+		return nil
 	}
-	delete(s.items, key)
-	return nil
+	return errors.New("Subscriber does not exist")
 }
 
 func (s *MapStore) GetSubscribers(newsletter string) (subscribers []*Subscriber, err error) {
@@ -64,6 +66,15 @@ func (s *MapStore) GetSubscribers(newsletter string) (subscribers []*Subscriber,
 		}
 	}
 	return subscribers, nil
+}
+
+func (s *MapStore) ConfirmSubscriber(newsletter, email string) error {
+	key := s.key(newsletter, email)
+	if i, ok := s.items[key]; ok {
+		i.ConfirmedAt = time.Now()
+		return nil
+	}
+	return errors.New("Subscriber does not exist")
 }
 
 func NewTestResource(router *http.ServeMux, store Store) *NewsletterResource {
@@ -178,6 +189,48 @@ func TestSubscribe(t *testing.T) {
 
 	if len(store.items) != 1 {
 		t.Errorf("Wrong number of items in the store: %v", len(store.items))
+	}
+}
+
+func TestConfirmSubscribe(t *testing.T) {
+	srv := http.NewServeMux()
+
+	store := NewTestStore()
+	newsletter := "testnewsletter"
+	email := "foo@bar.com"
+	store.AddSubscriber(newsletter, email)
+
+	nr := NewTestResource(srv, store)
+	nr.AddNewsletters([]string{newsletter})
+	nr.Setup(srv)
+
+	data := url.Values{}
+	data.Set("newsletter", newsletter)
+	data.Set("token", Sign(secret, email))
+
+	req, err := http.NewRequest("GET", confirmEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := req.URL.Query()
+	q.Add("newsletter", newsletter)
+	q.Add("token", Sign(secret, email))
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusFound {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+
+	i := store.items[store.key(newsletter, email)]
+	if i.ConfirmedAt.Sub(i.CreatedAt) < 0 {
+		t.Errorf("Confirm time not updated")
 	}
 }
 
@@ -358,7 +411,13 @@ func TestUnsubscribeWithoutNewsletter(t *testing.T) {
 
 func TestUnsubscribeWithoutToken(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+
+	newsletter := "testnewsletter"
+	email := "foo@bar.com"
+	store := NewTestStore()
+	store.AddSubscriber(newsletter, email)
+
+	nr := NewTestResource(srv, store)
 	nr.Setup(srv)
 
 	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
@@ -378,6 +437,45 @@ func TestUnsubscribeWithoutToken(t *testing.T) {
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("Unexpected status code %d", resp.StatusCode)
 	}
+
+	if len(store.items) != 1 {
+		t.Errorf("Wrong number of subscribers: %v", len(store.items))
+	}
+}
+
+func TestUnsubscribeWithBadToken(t *testing.T) {
+	srv := http.NewServeMux()
+
+	newsletter := "testnewsletter"
+	email := "foo@bar.com"
+	store := NewTestStore()
+	store.AddSubscriber(newsletter, email)
+
+	nr := NewTestResource(srv, store)
+	nr.Setup(srv)
+
+	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := req.URL.Query()
+	q.Add("newsletter", "random value")
+	q.Add("token", "abcde")
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	if len(store.items) != 1 {
+		t.Errorf("Wrong number of subscribers: %v", len(store.items))
+	}
 }
 
 func TestUnsubscribe(t *testing.T) {
@@ -389,6 +487,7 @@ func TestUnsubscribe(t *testing.T) {
 	store.AddSubscriber(newsletter, email)
 
 	nr := NewTestResource(srv, store)
+	nr.AddNewsletters([]string{newsletter})
 	nr.Setup(srv)
 
 	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
@@ -407,5 +506,14 @@ func TestUnsubscribe(t *testing.T) {
 
 	if resp.StatusCode != http.StatusFound {
 		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	if len(store.items) != 1 {
+		t.Errorf("Wrong number of subscribers left: %d", len(store.items))
+	}
+
+	i := store.items[store.key(newsletter, email)]
+	if i.UnsubscribedAt.Sub(i.CreatedAt) < 0 {
+		t.Errorf("Unsubscribe time not updated")
 	}
 }

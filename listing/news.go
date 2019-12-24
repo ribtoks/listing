@@ -13,12 +13,13 @@ import (
 
 // item model.
 type Subscriber struct {
-	Newsletter   string    `json:"newsletter"`
-	Email        string    `json:"email"`
-	CreatedAt    time.Time `json:"created_at"`
-	ConfirmedAt  time.Time `json:"confirmed_at"`
-	ComplainedAt time.Time `json:"complained_at"`
-	BouncedAt    time.Time `json:"bounced_at"`
+	Newsletter     string    `json:"newsletter"`
+	Email          string    `json:"email"`
+	CreatedAt      time.Time `json:"created_at"`
+	UnsubscribedAt time.Time `json:"unsubscribed_at"`
+	ConfirmedAt    time.Time `json:"confirmed_at"`
+	ComplainedAt   time.Time `json:"complained_at"`
+	BouncedAt      time.Time `json:"bounced_at"`
 }
 
 // New returns a new mailing list store with default AWS credentials.
@@ -33,6 +34,7 @@ type Store interface {
 	AddSubscriber(newsletter, email string) error
 	RemoveSubscriber(newsletter, email string) error
 	GetSubscribers(newsletter string) (subscribers []*Subscriber, err error)
+	ConfirmSubscriber(newsletter, email string) error
 }
 
 // DynamoDBStore is a DynamoDB mailing list storage implementation.
@@ -71,9 +73,14 @@ func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
 	return nil
 }
 
-// RemoveSubscriber removes a subscriber from a newsletter.
 func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
-	_, err := s.Client.DeleteItem(&dynamodb.DeleteItemInput{
+	unsubscribeTime := time.Now().String()
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":unsubscribeTime": {
+				S: aws.String(unsubscribeTime),
+			},
+		},
 		TableName: &s.TableName,
 		Key: map[string]*dynamodb.AttributeValue{
 			"newsletter": &dynamodb.AttributeValue{
@@ -83,8 +90,10 @@ func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
 				S: &email,
 			},
 		},
-	})
-
+		ReturnValues:     aws.String("UPDATED_NEW"),
+		UpdateExpression: aws.String("set unsubscribed_at = :unsubscribeTime"),
+	}
+	_, err := s.Client.UpdateItem(input)
 	return err
 }
 
@@ -111,4 +120,28 @@ func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscr
 	})
 
 	return
+}
+
+func (s *DynamoDBStore) ConfirmSubscriber(newsletter, email string) error {
+	confirmTime := time.Now().String()
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":confirmTime": {
+				S: aws.String(confirmTime),
+			},
+		},
+		TableName: &s.TableName,
+		Key: map[string]*dynamodb.AttributeValue{
+			"newsletter": &dynamodb.AttributeValue{
+				S: &newsletter,
+			},
+			"email": &dynamodb.AttributeValue{
+				S: &email,
+			},
+		},
+		ReturnValues:     aws.String("UPDATED_NEW"),
+		UpdateExpression: aws.String("set confirmed_at = :confirmTime"),
+	}
+	_, err := s.Client.UpdateItem(input)
+	return err
 }
