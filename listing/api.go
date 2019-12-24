@@ -13,6 +13,7 @@ type NewsletterResource struct {
 	secret         string
 	subscribeURL   string
 	unsubscribeURL string
+	newsletters    map[string]bool
 	store          Store
 }
 
@@ -20,6 +21,12 @@ func (nr *NewsletterResource) Setup(router *http.ServeMux) {
 	router.HandleFunc("/subscribers", nr.auth(nr.subscribers))
 	router.HandleFunc("/subscribe", nr.subscribe)
 	router.HandleFunc("/unsubscribe", nr.unsubscribe)
+}
+
+func (nr *NewsletterResource) AddNewsletters(n []string) {
+	for _, i := range n {
+		nr.newsletters[i] = true
+	}
 }
 
 // auth middleware.
@@ -40,6 +47,11 @@ func (nr *NewsletterResource) auth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (nr *NewsletterResource) isValidNewsletter(n string) bool {
+	_, ok := nr.newsletters[n]
+	return ok
+}
+
 // subscribers route.
 func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request) {
 	newsletter := r.URL.Query().Get("newsletter")
@@ -52,6 +64,7 @@ func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request
 	emails, err := nr.store.GetSubscribers(newsletter)
 	if err != nil {
 		log.Printf("error fetching subscribers: %v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -89,6 +102,12 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if !nr.isValidNewsletter(newsletter) {
+		log.Printf("Invalid newsletter: %v", newsletter)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
 	err = nr.store.AddSubscriber(newsletter, email)
 	if err != nil {
 		log.Printf("error subscribing email %q to %q: %v", email, newsletter, err)
@@ -103,7 +122,7 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 
 // unsubscribe route.
 func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != "GET" {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}

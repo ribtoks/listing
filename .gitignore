@@ -16,6 +16,8 @@ vendor/
 node_modules/
 .serverless/
 
+secrets.json
+
 *.swp
 *.swo
 

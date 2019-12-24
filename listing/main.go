@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -33,6 +34,7 @@ func main() {
 	subscribeURL := os.Getenv("SUBSCRIBE_REDIRECT_URL")
 	unsubscribeURL := os.Getenv("UNSUBSCRIBE_REDIRECT_URL")
 	tableName := os.Getenv("DYNAMO_TABLE")
+	supportedNewsletters := os.Getenv("SUPPORTED_NEWSLETTERS")
 
 	router := http.NewServeMux()
 	newsletter := &NewsletterResource{
@@ -41,7 +43,11 @@ func main() {
 		subscribeURL:   subscribeURL,
 		unsubscribeURL: unsubscribeURL,
 		store:          NewStore(tableName),
+		newsletters:    make(map[string]bool),
 	}
+
+	sn := strings.Split(supportedNewsletters, ";")
+	newsletter.AddNewsletters(sn)
 
 	newsletter.Setup(router)
 	handlerLambda = httpadapter.New(router)

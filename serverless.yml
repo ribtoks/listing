@@ -34,6 +34,7 @@ functions:
       API_TOKEN: ${self:custom.secrets.apiToken}
       SUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.subscribeRedirectUrl}
       UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
+      SUPPORTED_NEWSLETTERS: ${self:custom.secrets.supportedNewsletters}
       DYNAMO_TABLE: ${self:custom.tableName}
     iamRoleStatements:
       - Effect: Allow
