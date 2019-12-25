@@ -6,10 +6,14 @@ import (
 	"time"
 )
 
-const jsonTimeLayout = "2006-01-02T15:04:05+07:00"
+const jsonTimeLayout = time.RFC3339
 
 // JSONTime is the time.Time with JSON marshal and unmarshal capability
 type JSONTime time.Time
+
+func jsonTimeNow() JSONTime {
+	return JSONTime(time.Now().UTC())
+}
 
 // UnmarshalJSON will unmarshal using 2006-01-02T15:04:05+07:00 layout
 func (t *JSONTime) UnmarshalJSON(b []byte) error {

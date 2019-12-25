@@ -12,6 +12,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
 
+var (
+	incorrectTime = JSONTime(time.Unix(1, 1))
+)
+
 // item model.
 type Subscriber struct {
 	Newsletter     string   `json:"newsletter"`
@@ -37,7 +41,6 @@ type Store interface {
 	ConfirmSubscriber(newsletter, email string) error
 }
 
-// DynamoDBStore is a DynamoDB mailing list storage implementation.
 type DynamoDBStore struct {
 	TableName string
 	Client    dynamodbiface.DynamoDBAPI
@@ -46,16 +49,15 @@ type DynamoDBStore struct {
 // make sure DynamoDBStore implements interface
 var _ Store = (*DynamoDBStore)(nil)
 
-// AddSubscriber adds a subscriber to a newsletter.
 func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
 	i, err := dynamodbattribute.MarshalMap(Subscriber{
 		Newsletter:     newsletter,
 		Email:          email,
-		CreatedAt:      JSONTime(time.Now()),
-		ConfirmedAt:    JSONTime(time.Unix(1, 1)),
-		ComplainedAt:   JSONTime(time.Unix(1, 1)),
-		UnsubscribedAt: JSONTime(time.Unix(1, 1)),
-		BouncedAt:      JSONTime(time.Unix(1, 1)),
+		CreatedAt:      jsonTimeNow(),
+		UnsubscribedAt: incorrectTime,
+		ConfirmedAt:    incorrectTime,
+		ComplainedAt:   incorrectTime,
+		BouncedAt:      incorrectTime,
 	})
 
 	if err != nil {
@@ -75,14 +77,20 @@ func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
 }
 
 func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
-	unsubscribeTime := JSONTime(time.Now()).String()
+	updateVal := struct {
+		UnsubscribedAt JSONTime `json:":unsubscribed_at"`
+	}{
+		UnsubscribedAt: jsonTimeNow(),
+	}
+
+	update, err := dynamodbattribute.MarshalMap(updateVal)
+	if err != nil {
+		return err
+	}
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":unsubscribeTime": {
-				S: aws.String(unsubscribeTime),
-			},
-		},
-		TableName: &s.TableName,
+		ExpressionAttributeValues: update,
+		UpdateExpression:          aws.String("set unsubscribed_at = :unsubscribed_at"),
+		TableName:                 &s.TableName,
 		Key: map[string]*dynamodb.AttributeValue{
 			"newsletter": &dynamodb.AttributeValue{
 				S: &newsletter,
@@ -91,14 +99,12 @@ func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
 				S: &email,
 			},
 		},
-		ReturnValues:     aws.String("UPDATED_NEW"),
-		UpdateExpression: aws.String("set unsubscribed_at = :unsubscribeTime"),
+		ReturnValues: aws.String("UPDATED_NEW"),
 	}
-	_, err := s.Client.UpdateItem(input)
+	_, err = s.Client.UpdateItem(input)
 	return err
 }
 
-// GetSubscribers returns subscriber emails for a newsletter.
 func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscriber, err error) {
 	query := &dynamodb.QueryInput{
 		TableName:              &s.TableName,
@@ -128,14 +134,21 @@ func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscr
 }
 
 func (s *DynamoDBStore) ConfirmSubscriber(newsletter, email string) error {
-	confirmTime := JSONTime(time.Now()).String()
+	updateVal := struct {
+		ConfirmedAt JSONTime `json:":confirmed_at"`
+	}{
+		ConfirmedAt: jsonTimeNow(),
+	}
+
+	update, err := dynamodbattribute.MarshalMap(updateVal)
+	if err != nil {
+		return err
+	}
+
 	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":confirmTime": {
-				S: aws.String(confirmTime),
-			},
-		},
-		TableName: &s.TableName,
+		ExpressionAttributeValues: update,
+		UpdateExpression:          aws.String("set confirmed_at = :confirmed_at"),
+		TableName:                 &s.TableName,
 		Key: map[string]*dynamodb.AttributeValue{
 			"newsletter": &dynamodb.AttributeValue{
 				S: &newsletter,
@@ -144,9 +157,8 @@ func (s *DynamoDBStore) ConfirmSubscriber(newsletter, email string) error {
 				S: &email,
 			},
 		},
-		ReturnValues:     aws.String("UPDATED_NEW"),
-		UpdateExpression: aws.String("set confirmed_at = :confirmTime"),
+		ReturnValues: aws.String("UPDATED_NEW"),
 	}
-	_, err := s.Client.UpdateItem(input)
+	_, err = s.Client.UpdateItem(input)
 	return err
 }
