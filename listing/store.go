@@ -1,4 +1,3 @@
-// Package news provides a very simple DynamoDB-backed mailing list for newsletters.
 package main
 
 import (
@@ -15,17 +14,6 @@ import (
 var (
 	incorrectTime = JSONTime(time.Unix(1, 1))
 )
-
-// item model.
-type Subscriber struct {
-	Newsletter     string   `json:"newsletter"`
-	Email          string   `json:"email"`
-	CreatedAt      JSONTime `json:"created_at"`
-	UnsubscribedAt JSONTime `json:"unsubscribed_at"`
-	ConfirmedAt    JSONTime `json:"confirmed_at"`
-	ComplainedAt   JSONTime `json:"complained_at"`
-	BouncedAt      JSONTime `json:"bounced_at"`
-}
 
 func NewStore(table string, sess *session.Session) *DynamoDBStore {
 	return &DynamoDBStore{
