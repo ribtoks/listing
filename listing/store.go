@@ -44,8 +44,6 @@ func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
 		CreatedAt:      jsonTimeNow(),
 		UnsubscribedAt: incorrectTime,
 		ConfirmedAt:    incorrectTime,
-		ComplainedAt:   incorrectTime,
-		BouncedAt:      incorrectTime,
 	})
 
 	if err != nil {

@@ -47,11 +47,9 @@ func (s *MapStore) AddSubscriber(newsletter, email string) error {
 	s.items[key] = &Subscriber{
 		Newsletter:     newsletter,
 		Email:          email,
-		CreatedAt:      JSONTime(time.Now()),
-		ConfirmedAt:    JSONTime(time.Unix(1, 1)),
-		UnsubscribedAt: JSONTime(time.Unix(1, 1)),
-		ComplainedAt:   JSONTime(time.Unix(1, 1)),
-		BouncedAt:      JSONTime(time.Unix(1, 1)),
+		CreatedAt:      jsonTimeNow(),
+		ConfirmedAt:    incorrectTime,
+		UnsubscribedAt: incorrectTime,
 	}
 	return nil
 }

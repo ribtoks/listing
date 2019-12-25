@@ -13,11 +13,6 @@ provider:
   iamRoleStatements:
     - Effect: Allow
       Action:
-        - "ses:SendEmail"
-        - "ses:SendRawEmail"
-      Resource: "arn:aws:ses:${self:provider.region}:*:identity/*"
-    - Effect: Allow
-      Action:
         - "dynamodb:DescribeTable"
         - "dynamodb:Query"
         - "dynamodb:Scan"
@@ -28,22 +23,24 @@ provider:
       Resource:
         - { 'Fn::ImportValue': '${self:provider.stage}-SubscriptionsTableArn' }
   environment:
-    TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
-    API_TOKEN: ${self:custom.secrets.apiToken}
     SUPPORTED_NEWSLETTERS: ${self:custom.secrets.supportedNewsletters}
-    DYNAMO_TABLE: ${self:custom.tableName}
-    EMAIL_FROM: ${self:custom.secrets.emailFrom}
+    SUBSCRIBERS_TABLE: ${self:custom.subscribersTableName}
 
 plugins:
   - serverless-localstack
+  - serverless-iam-roles-per-function
 
 package:
+  individually: true
   exclude:
     - ./**
   include:
     - ./bin/**
 
 functions:
+  # "main" entry point into this application responsible for 
+  # collecting subscribers, storing them in the table and sending
+  # confirmation emails to them
   listing-subscribe:
     handler: bin/listing
     events:
@@ -51,10 +48,19 @@ functions:
           path: subscribe
           method: POST
           cors: true
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "ses:SendEmail"
+          - "ses:SendRawEmail"
+        Resource: "arn:aws:ses:${self:provider.region}:*:identity/*"
     environment:
       SUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.subscribeRedirectUrl}
       CONFIRM_URL: ${self:custom.secrets.confirmUrl}
-
+      EMAIL_FROM: ${self:custom.secrets.emailFrom}
+      TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
+  # function called when user clicks "unsubscribe" link in the email
   listing-unsubscribe:
     handler: bin/listing
     events:
@@ -62,8 +68,11 @@ functions:
           path: unsubscribe
           method: GET
           cors: true
+    iamRoleStatementsInherit: true
     environment:
       UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
+      TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
+  # function called when user clicks "confirm email" in the initial signup
   listing-confirm:
     handler: bin/listing
     events:
@@ -71,8 +80,12 @@ functions:
           path: confirm
           method: GET
           cors: true
+    iamRoleStatementsInherit: true
     environment:
       CONFIRM_REDIRECT_URL: ${self:custom.secrets.confirmRedirectUrl}
+      TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
+  # "admin area" that allows to export and import all subscribers
+  # this API is protected
   listing-subscribers:
     handler: bin/listing
     events:
@@ -80,10 +93,31 @@ functions:
           path: subscribers
           method: GET
           cors: true
+    iamRoleStatementsInherit: true
+    environment:
+      API_TOKEN: ${self:custom.secrets.apiToken}
+  # lambda used to handle bounce and complaint notifications from SES
+  listing-sesnotify:
+    handler: bin/sesnotify
+    events:
+      - sns:
+          topicName: ${self:custom.snsTopicName}
+          arn: { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTopicArn' }
+    environment:
+      NOTIFICATIONS_TABLE: ${self:custom.snsTableName}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "dynamodb:DescribeTable"
+          - "dynamodb:PutItem"
+        Resource:
+          - { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTableArn' }
 
 custom:
   secrets: ${file(secrets.json)}
-  tableName: ${self:provider.stage}-subscribers
+  subscribersTableName: ${self:provider.stage}-listing-subscribers
+  snsTableName: ${self:provider.stage}-listing-sesnotify
+  snsTopicName: ${self:provider.stage}-listing-ses-notifications
   stages:
     - local
     - dev

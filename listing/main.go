@@ -48,7 +48,7 @@ func main() {
 	unsubscribeRedirectUrl := os.Getenv("UNSUBSCRIBE_REDIRECT_URL")
 	confirmRedirectUrl := os.Getenv("CONFIRM_REDIRECT_URL")
 	confirmUrl := os.Getenv("CONFIRM_URL")
-	tableName := os.Getenv("DYNAMO_TABLE")
+	tableName := os.Getenv("SUBSCRIBERS_TABLE")
 	supportedNewsletters := os.Getenv("SUPPORTED_NEWSLETTERS")
 	emailFrom := os.Getenv("EMAIL_FROM")
 

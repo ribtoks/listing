@@ -6,10 +6,11 @@ provider:
 
 resources:
   Resources:
+    # main table that stores subscriptions for the newsletters
     SubscriptionsDynamoDBTable:
       Type: 'AWS::DynamoDB::Table'
       Properties:
-        TableName: ${self:custom.tableName}
+        TableName: ${self:custom.subscribersTableName}
         AttributeDefinitions:
           - AttributeName: newsletter
             AttributeType: S
@@ -20,8 +21,32 @@ resources:
             KeyType: HASH
           - AttributeName: email
             KeyType: RANGE
-         # Set the capacity to auto-scale
         BillingMode: PAY_PER_REQUEST
+    # table that will store complains and bounces from AWS SES
+    # received through SNS notifications topic SESNotificationsTopic
+    SesNotificationsDynamoDBTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        TableName: ${self:custom.snsTableName}
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+          - AttributeName: notification
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
+            KeyType: HASH
+          - AttributeName: notification
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+    # SNS topic that will receive notifications from AWS SES
+    SESNotificationsTopic:
+      Type: 'AWS::SNS::Topic'
+      Properties:
+        TopicName: ${self:custom.snsTopicName}
+  # Outputs contain ARNs of tables and sns topics used by lambdas
+  # in the serverless-api.yml file. This allows to deploy them separately
+  # since DB and SNS resources will almost never change unlike API code
   Outputs:
     SubscriptionsTableArn:
       Description: The ARN of the subscription table
@@ -31,7 +56,23 @@ resources:
           - Arn
       Export:
         Name: ${self:provider.stage}-SubscriptionsTableArn
+    NotificationsTableArn:
+      Description: The ARN of the notifications table
+      Value:
+        Fn::GetAtt:
+          - SesNotificationsDynamoDBTable
+          - Arn
+      Export:
+        Name: ${self:provider.stage}-NotificationsTableArn
+    NotificationsTopicArn:
+      Description: The ARN of the SNS topic
+      Value:
+        Ref: SESNotificationsTopic
+      Export:
+        Name: ${self:provider.stage}-NotificationsTopicArn
 
 custom:
-  tableName: ${opt:stage, 'dev'}-subscribers
+  subscribersTableName: ${opt:stage, 'dev'}-listing-subscribers
+  snsTableName: ${opt:stage, 'dev'}-listing-sesnotify
+  snsTopicName: ${opt:stage, 'dev'}-listing-ses-notifications
 
