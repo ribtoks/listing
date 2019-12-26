@@ -13,7 +13,8 @@ Except of quite obvious prerequisites, the typical deployment procedure is as ea
 *   [Go](https://golang.org/dl/)
 *   [Node.js](https://nodejs.org/en/download/) (for npm and serverless)
 *   [Serverless](https://serverless.com/framework/docs/getting-started/) (`npm install -g serverless`)
-*   Serverless plugins (`npm install` in repository root)
+*   Go dep (run `go get -u github.com/golang/dep/cmd/dep` anywhere)
+*   Serverless plugins (run `npm install` in repository root)
 *   [Configure AWS credentials](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/setup-credentials.html)
 
 ## Edit secrets
