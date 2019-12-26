@@ -16,7 +16,7 @@ clone_depth: 3                      # clone entire repository history if not def
 
 before_build:
   - go version
-  - go get github.com/golang/dep/cmd/dep
+  - choco install dep
   - dep ensure
 
 build_script:
