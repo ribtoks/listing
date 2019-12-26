@@ -28,7 +28,7 @@ There's also a [MoonMail](https://github.com/MoonMail/MoonMail) which is kind of
 
 You can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Finding [good](https://github.com/InterNations/antwort) [email](https://github.com/leemunroe/responsive-html-email-template) [templates](https://github.com/mailgun/transactional-email-templates) or building ones using [available](http://mosaico.io/) [tools](https://beefree.io/) is also not a problem. And there are [many](https://github.com/rykov/paperboy) [ways](https://github.com/Circle-gg/thunder-mail) you can send those emails without a need to waste cloud computer resources at all other times.
 
-## How to use Listing?
+## How to use Listing
 
 1. Deploy *Listing* (described below)
 2. Test from the command line that everything works as expected (described below)
@@ -37,6 +37,12 @@ You can achieve analytics and A/B testing using systems like [Google Analytics](
 Everything else (confirmation, unsubscribe) will be handled in the emails or automatically.
 
 The only thing left to do is to send periodic emails to your subscription list.
+
+## How to avoid vendor lock
+
+*Listing* is heavily dependent on AWS, but the size of DynamoDB table even with 100k subscribers is so small, you can safely export it to json using `/subscribers` endpoint and restore to any other cloud.
+
+*Listing* uses serverless framework so migration to a different cloud will be less painful than from barebones AWS SAM templates.
 
 ## Deployment
 
@@ -94,6 +100,8 @@ Go to AWS Console UI and in Lambda section find `listing-subscribe` function. Se
 (optional - you can do that in the end) Configure `SUBSCRIBE_REDIRECT_URL`, `UNSUBSCRIBE_REDIRECT_URL`, `CONFIRM_REDIRECT_URL` in the appropriate lambda function to point to the pages on your website.
 
 ### Configure SNS topic for bounces and complaints
+
+In order to exit "sandbox" mode in AWS SES you need to have a procedure for handling bounces and complaints. *Listing* provides this functionality, but you have to do 1 manual action.
 
 Go to [AWS Console UI and set Bounce and Complaint](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-sns-notifications.html) SNS topic's ARN for your SES domain to the `listing-ses-notifications` topic. You can find it in `SES -> Domains -> (select your domain) -> Notifications`. Arn will be an output of `serverless deploy` command for `serverless-db.yml` config. Example of such ARN: `arn:aws:sns:us-east-1:1234567890:dev-listing-ses-notifications`.
 
