@@ -17,6 +17,8 @@ const (
 	complaintType  = "complaint"
 )
 
+// JSONTime is an alias that allows standartized
+// serialization and deserialization with strings
 type JSONTime time.Time
 
 func (t *JSONTime) MarshalJSON() ([]byte, error) {
@@ -25,7 +27,7 @@ func (t *JSONTime) MarshalJSON() ([]byte, error) {
 	return []byte(str), nil
 }
 
-type SesNotification struct {
+type sesNotification struct {
 	Email        string   `json:"email"`
 	From         string   `json:"from"`
 	ReceivedAt   JSONTime `json:"received_at"`
@@ -37,6 +39,8 @@ type Store interface {
 	AddComplaint(email, from string) error
 }
 
+// DynamoDBStore is an implementation of Store interface
+// that is capable of working with AWS DynamoDB
 type DynamoDBStore struct {
 	TableName string
 	Client    dynamodbiface.DynamoDBAPI
@@ -53,7 +57,7 @@ func NewStore(table string, sess *session.Session) *DynamoDBStore {
 var _ Store = (*DynamoDBStore)(nil)
 
 func (s *DynamoDBStore) StoreNotification(email, from string, t string) error {
-	i, err := dynamodbattribute.MarshalMap(SesNotification{
+	i, err := dynamodbattribute.MarshalMap(sesNotification{
 		Email:        email,
 		ReceivedAt:   JSONTime(time.Now().UTC()),
 		Notification: t,

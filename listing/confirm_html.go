@@ -1,9 +1,9 @@
 package main
 
 const (
-	// HtmlBody is a template of the email used for
+	// HTMLBody is a template of the email used for
 	// confirmation of the subscription emails
-	HtmlBody = `<!doctype html>
+	HTMLBody = `<!doctype html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width" />
@@ -363,7 +363,7 @@ const (
                                 <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                                   <tbody>
                                     <tr>
-                                      <td> <a href="{{.ConfirmUrl}}" target="_blank">Confirm email</a> </td>
+                                      <td> <a href="{{.ConfirmURL}}" target="_blank">Confirm email</a> </td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -387,7 +387,7 @@ const (
               <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                 <tr>
                   <td class="content-block">
-										<span class="apple-link"><a href="https://xpiksapp.com/">Xpiks team</a></span>
+										<span class="apple-link">{{.Newsletter}} team</span>
                   </td>
                 </tr>
               </table>

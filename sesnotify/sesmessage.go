@@ -14,7 +14,7 @@ type Bounce struct {
 	BounceSubType     string          `json:"bounceSubType"`
 	BouncedRecipients []MailRecipient `json:"bouncedRecipients"`
 	Timestamp         string          `json:"timestamp"`
-	FeedbackId        string          `json:"feedbackId"`
+	FeedbackID        string          `json:"feedbackId"`
 	RemoteMtaIp       string          `json:"remoteMtaIp"`
 }
 
@@ -26,9 +26,9 @@ type Complaint struct {
 	UserAgent             string          `json:"userAgent"`
 	ComplainedRecipients  []MailRecipient `json:"complainedRecipients"`
 	ComplaintFeedbackType string          `json:"complaintFeedbackType"`
-	ArrivalDate           string          `json:"emailAddress"`
-	Timestamp             string          `json:"emailAddress"`
-	FeedbackId            string          `json:"emailAddress"`
+	ArrivalDate           string          `json:"arrivalDate"`
+	Timestamp             string          `json:"timestamp"`
+	FeedbackID            string          `json:"feedbackId"`
 }
 
 type Mail struct {

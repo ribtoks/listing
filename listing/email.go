@@ -15,38 +15,41 @@ const (
 	// set, comment the next line and line 92.
 	//ConfigurationSet = "ConfigSet"
 
-	// The subject line for the email.
+	// Subject line for the email
 	Subject = "Confirm your email"
 
-	// The character encoding for the email.
+	// CharSet is the character encoding for the email
 	CharSet = "UTF-8"
 
+	// TextBody is a plain text copy of HTMLBody
 	TextBody = `
 Hello,
 
 Thank you for subscribing to {{.Newsletter}} newsletter! Please confirm your email by clicking link below.
 
-{{.ConfirmUrl}}
+{{.ConfirmURL}}
 
 You are receiveing this email because somebody, hopefully you, subscribed to {{.Newsletter}} newsletter. If it was not you, you can safely ignore this email.
 
-Xpiks team
+{{.Newsletter}} team
 `
 )
 
+// Mailer is an interface to sending confirmation emails for subscriptions
 type Mailer interface {
-	SendConfirmation(newsletter, email string, confirmUrl string) error
+	SendConfirmation(newsletter, email string, confirmURL string) error
 }
 
+// SESMailer is an implementation of Mailer interface that works with AWS SES
 type SESMailer struct {
 	sender string
 	secret string
 	svc    *ses.SES
 }
 
-func (sm *SESMailer) confirmUrl(newsletter, email string, confirmBaseUrl string) (string, error) {
+func (sm *SESMailer) confirmURL(newsletter, email string, confirmBaseURL string) (string, error) {
 	token := Sign(sm.secret, email)
-	baseUrl, err := url.Parse(confirmBaseUrl)
+	baseUrl, err := url.Parse(confirmBaseURL)
 	if err != nil {
 		log.Println("Malformed URL: ", err.Error())
 		return "", err
@@ -118,18 +121,18 @@ func (sm *SESMailer) sendEmail(email, htmlBody, textBody string) error {
 
 }
 
-func (sm *SESMailer) SendConfirmation(newsletter, email string, confirmBaseUrl string) error {
-	confirmUrl, err := sm.confirmUrl(newsletter, email, confirmBaseUrl)
+func (sm *SESMailer) SendConfirmation(newsletter, email string, confirmBaseURL string) error {
+	confirmUrl, err := sm.confirmURL(newsletter, email, confirmBaseURL)
 	if err != nil {
 		return err
 	}
 
 	data := struct {
 		Newsletter string
-		ConfirmUrl string
+		ConfirmURL string
 	}{
 		Newsletter: newsletter,
-		ConfirmUrl: confirmUrl,
+		ConfirmURL: confirmUrl,
 	}
 
 	var htmlBodyTpl bytes.Buffer

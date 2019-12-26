@@ -14,7 +14,7 @@
 
 *Listing* is a small and simple service that allows to self-host email subscriptions list on AWS using Lambda, DynamoDB, SES and SNS. It handles email list subscribe/unsubscribe/confirm actions as well as email bounces and complaints (if you use same SES account for sending the newsletter).
 
-### What problem it solves?
+### What problem it solves
 
 Self-hosted email marketing solutions one can find today like [tinycampaign](https://github.com/parkerj/tinycampaign), [audience](https://github.com/aniftyco/audience), [mail-for-good](https://github.com/freeCodeCamp/mail-for-good), [colossus](https://github.com/vitorfs/colossus) and others have a few problems:
 
@@ -40,9 +40,9 @@ Bounces and Complaints are stored in additional DynamoDB table. This table is ma
 
 ## How to use Listing
 
-1. Deploy *Listing* (described below)
-2. Test from the command line that everything works as expected (described below)
-3. Create html form for your website to subscribe to emails using *Listing* Lambda URL
+1.  Deploy *Listing* (described below)
+2.  Test from the command line that everything works as expected (described below)
+3.  Create html form for your website to subscribe to emails using *Listing* Lambda URL
 
 Everything else (confirmation, unsubscribe) will be handled in the emails or automatically.
 
@@ -66,7 +66,7 @@ Except of quite obvious prerequisites, the typical deployment procedure is as ea
 *   [Exit "sandbox" mode in SES](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/request-production-access.html) (you will have to contact support)
 *   Create "confirm"/"unsubscribed" pages on your website
 
-### Install prerequisites:
+### Install prerequisites
 
 *   [Go](https://golang.org/dl/)
 *   [Node.js](https://nodejs.org/en/download/) (for npm and serverless)

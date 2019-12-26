@@ -27,19 +27,19 @@ const (
 	contextSessionKey = "ctx_sess"
 )
 
-// Response is of type APIGatewayProxyResponse since we're leveraging the
-// AWS Lambda Proxy Request functionality (default behavior)
-//
-// https://serverless.com/framework/docs/providers/aws/events/apigateway/#lambda-proxy-integration
+// Response is an alias of events.APIGatewayProxyResponse
 type Response events.APIGatewayProxyResponse
+
+// Request is an alias of events.APIGatewayProxyRequest
 type Request events.APIGatewayProxyRequest
 
+// Handler is the main entry point to this lambda
 func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	return handlerLambda.ProxyWithContext(ctx, req)
 }
 
 func main() {
-	HtmlTemplate = template.Must(template.New("HtmlBody").Parse(HtmlBody))
+	HtmlTemplate = template.Must(template.New("HtmlBody").Parse(HTMLBody))
 	TextTemplate = template.Must(template.New("TextBody").Parse(TextBody))
 
 	secret := os.Getenv("TOKEN_SECRET")
@@ -71,10 +71,10 @@ func main() {
 	newsletter := &NewsletterResource{
 		apiToken:               apiToken,
 		secret:                 secret,
-		subscribeRedirectUrl:   subscribeRedirectUrl,
-		unsubscribeRedirectUrl: unsubscribeRedirectUrl,
-		confirmRedirectUrl:     confirmRedirectUrl,
-		confirmUrl:             confirmUrl,
+		subscribeRedirectURL:   subscribeRedirectUrl,
+		unsubscribeRedirectURL: unsubscribeRedirectUrl,
+		confirmRedirectURL:     confirmRedirectUrl,
+		confirmURL:             confirmUrl,
 		store:                  store,
 		mailer:                 mailer,
 		newsletters:            make(map[string]bool),

@@ -13,10 +13,10 @@ import (
 type NewsletterResource struct {
 	apiToken               string
 	secret                 string
-	subscribeRedirectUrl   string
-	unsubscribeRedirectUrl string
-	confirmRedirectUrl     string
-	confirmUrl             string
+	subscribeRedirectURL   string
+	unsubscribeRedirectURL string
+	confirmRedirectURL     string
+	confirmURL             string
 	newsletters            map[string]bool
 	store                  Store
 	mailer                 Mailer
@@ -91,7 +91,7 @@ func (nr *NewsletterResource) getSubscribers(w http.ResponseWriter, r *http.Requ
 
 	emails, err := nr.store.GetSubscribers(newsletter)
 	if err != nil {
-		log.Printf("error fetching subscribers: %v\n", err)
+		log.Printf("Failed to fetch subscribers. err=%v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -120,9 +120,16 @@ func (nr *NewsletterResource) putSubscribers(w http.ResponseWriter, r *http.Requ
 
 	ss := make([]*Subscriber, 0, len(subscribers))
 	for _, s := range subscribers {
-		if nr.isValidNewsletter(s.Newsletter) {
-			ss = append(ss, s)
+		if !nr.isValidNewsletter(s.Newsletter) {
+			log.Printf("Skipping unsupported newsletter. value=%v", s.Newsletter)
+			continue
 		}
+		if err = checkmail.ValidateFormat(s.Email); err != nil {
+			log.Printf("Skipping invalid email. value=%v", s.Email)
+			continue
+		}
+		s.CreatedAt = jsonTimeNow()
+		ss = append(ss, s)
 	}
 
 	if len(ss) == 0 {
@@ -161,7 +168,7 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 	r.Body = http.MaxBytesReader(w, r.Body, maxSubscribeBodySize)
 	err := r.ParseForm()
 	if err != nil {
-		log.Printf("error parsing form: %v", err)
+		log.Printf("Failed to parse form. err=%v", err)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -171,30 +178,30 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 
 	err = checkmail.ValidateFormat(email)
 	if err != nil {
-		log.Printf("error validating email: %q", err)
+		log.Printf("Failed to validate email. err=%q", err)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	if !nr.isValidNewsletter(newsletter) {
-		log.Printf("Invalid newsletter: %v", newsletter)
+		log.Printf("Invalid newsletter. value=%v", newsletter)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	err = nr.store.AddSubscriber(newsletter, email)
 	if err != nil {
-		log.Printf("error subscribing email %q to %q: %v", email, newsletter, err)
+		log.Printf("Failed to add subscription. email=%q newsletter=%q err=%v", email, newsletter, err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("subscribed email %q to %q", email, newsletter)
+	log.Printf("Added subscription email=%q newsletter=%q", email, newsletter)
 
-	nr.mailer.SendConfirmation(newsletter, email, nr.confirmUrl)
+	nr.mailer.SendConfirmation(newsletter, email, nr.confirmURL)
 
-	w.Header().Set("Location", nr.subscribeRedirectUrl)
-	http.Redirect(w, r, nr.subscribeRedirectUrl, http.StatusFound)
+	w.Header().Set("Location", nr.subscribeRedirectURL)
+	http.Redirect(w, r, nr.subscribeRedirectURL, http.StatusFound)
 }
 
 // unsubscribe route.
@@ -219,21 +226,21 @@ func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request
 
 	email, ok := Unsign(nr.secret, unsubscribeToken)
 	if !ok {
-		log.Printf("error unsigning %q", unsubscribeToken)
+		log.Printf("Failed to unsign token. value=%q", unsubscribeToken)
 		http.Error(w, "Invalid unsubscribe token", http.StatusBadRequest)
 		return
 	}
 
 	err := nr.store.RemoveSubscriber(newsletter, email)
 	if err != nil {
-		log.Printf("error unsubscribing %q: %v", email, err)
+		log.Printf("Failed to unsubscribe. email=%q err=%v", email, err)
 		http.Error(w, "Error unsubscribing from newsletter", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("unsubscribed email %q from %q", email, newsletter)
-	w.Header().Set("Location", nr.unsubscribeRedirectUrl)
-	http.Redirect(w, r, nr.unsubscribeRedirectUrl, http.StatusFound)
+	log.Printf("Unsubscribed. email=%q newsletter=%q", email, newsletter)
+	w.Header().Set("Location", nr.unsubscribeRedirectURL)
+	http.Redirect(w, r, nr.unsubscribeRedirectURL, http.StatusFound)
 }
 
 func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
@@ -252,19 +259,19 @@ func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
 
 	email, ok := Unsign(nr.secret, subscribeToken)
 	if !ok {
-		log.Printf("error unsigning %q", subscribeToken)
+		log.Printf("Failed to unsign token. value=%q", subscribeToken)
 		http.Error(w, "Invalid subscribe token", http.StatusBadRequest)
 		return
 	}
 
 	err := nr.store.ConfirmSubscriber(newsletter, email)
 	if err != nil {
-		log.Printf("error confirming %q: %v", email, err)
+		log.Printf("Failed to confirm subscription. email=%q err=%v", email, err)
 		http.Error(w, "Error confirming subscription", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("confirmed email %q from %q", email, newsletter)
-	w.Header().Set("Location", nr.confirmRedirectUrl)
-	http.Redirect(w, r, nr.confirmRedirectUrl, http.StatusFound)
+	log.Printf("Confirmed subscription. email=%q newsletter=%q", email, newsletter)
+	w.Header().Set("Location", nr.confirmRedirectURL)
+	http.Redirect(w, r, nr.confirmRedirectURL, http.StatusFound)
 }
