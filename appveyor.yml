@@ -7,7 +7,7 @@ skip_commits:
   message: /.*\[ci skip\]/       # Regex for matching commit message
 
 # clone directory
-clone_folder: c:\projects\listing
+clone_folder: c:\gopath\src\github.com\$username\$project
 
 environment:
   GOPATH: c:\gopath
