@@ -20,7 +20,7 @@ before_build:
   - dep ensure
 
 build_script:
-  - go build
+  - go build ./...
 
 test_script:
   - go test -v ./...

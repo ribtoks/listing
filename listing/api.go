@@ -29,9 +29,9 @@ const (
 
 func (nr *NewsletterResource) setup(router *http.ServeMux) {
 	router.HandleFunc("/subscribers", nr.auth(nr.subscribers))
-	router.HandleFunc("/subscribe", nr.subscribe)
-	router.HandleFunc("/unsubscribe", nr.unsubscribe)
-	router.HandleFunc("/confirm", nr.confirm)
+	router.HandleFunc("/subscribe", nr.method("POST", nr.subscribe))
+	router.HandleFunc("/unsubscribe", nr.method("GET", nr.unsubscribe))
+	router.HandleFunc("/confirm", nr.method("GET", nr.confirm))
 }
 
 func (nr *NewsletterResource) addNewsletters(n []string) {
@@ -58,7 +58,20 @@ func (nr *NewsletterResource) auth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (nr *NewsletterResource) method(m string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != m {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
 func (nr *NewsletterResource) isValidNewsletter(n string) bool {
+	if n == "" {
+		return true
+	}
 	_, ok := nr.newsletters[n]
 	return ok
 }
@@ -86,11 +99,6 @@ func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request
 
 // subscribe route.
 func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
 	err := r.ParseForm()
 	if err != nil {
 		log.Printf("error parsing form: %v", err)
@@ -131,11 +139,6 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 
 // unsubscribe route.
 func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
 	newsletter := r.URL.Query().Get(paramNewsletter)
 	unsubscribeToken := r.URL.Query().Get(paramToken)
 
@@ -174,18 +177,8 @@ func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request
 }
 
 func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
 	newsletter := r.URL.Query().Get(paramNewsletter)
 	subscribeToken := r.URL.Query().Get(paramToken)
-
-	if newsletter == "" {
-		http.Error(w, "The newsletter query-string parameter is required", http.StatusBadRequest)
-		return
-	}
 
 	if !nr.isValidNewsletter(newsletter) {
 		http.Error(w, "Invalid newsletter param", http.StatusBadRequest)

@@ -58,29 +58,7 @@ func (sm *SESMailer) confirmUrl(newsletter, email string, confirmBaseUrl string)
 	return baseUrl.String(), nil
 }
 
-func (sm *SESMailer) SendConfirmation(newsletter, email string, confirmBaseUrl string) error {
-	confirmUrl, err := sm.confirmUrl(newsletter, email, confirmBaseUrl)
-	if err != nil {
-		return err
-	}
-	data := struct {
-		Newsletter string
-		ConfirmUrl string
-	}{
-		Newsletter: newsletter,
-		ConfirmUrl: confirmUrl,
-	}
-
-	var htmlBodyTpl bytes.Buffer
-	if err := HtmlTemplate.Execute(&htmlBodyTpl, data); err != nil {
-		return err
-	}
-
-	var textBodyTpl bytes.Buffer
-	if err := TextTemplate.Execute(&textBodyTpl, data); err != nil {
-		return err
-	}
-
+func (sm *SESMailer) sendEmail(email, htmlBody, textBody string) error {
 	// Assemble the email.
 	input := &ses.SendEmailInput{
 		Destination: &ses.Destination{
@@ -93,11 +71,11 @@ func (sm *SESMailer) SendConfirmation(newsletter, email string, confirmBaseUrl s
 			Body: &ses.Body{
 				Html: &ses.Content{
 					Charset: aws.String(CharSet),
-					Data:    aws.String(htmlBodyTpl.String()),
+					Data:    aws.String(htmlBody),
 				},
 				Text: &ses.Content{
 					Charset: aws.String(CharSet),
-					Data:    aws.String(textBodyTpl.String()),
+					Data:    aws.String(textBody),
 				},
 			},
 			Subject: &ses.Content{
@@ -137,4 +115,32 @@ func (sm *SESMailer) SendConfirmation(newsletter, email string, confirmBaseUrl s
 	}
 
 	return nil
+
+}
+
+func (sm *SESMailer) SendConfirmation(newsletter, email string, confirmBaseUrl string) error {
+	confirmUrl, err := sm.confirmUrl(newsletter, email, confirmBaseUrl)
+	if err != nil {
+		return err
+	}
+
+	data := struct {
+		Newsletter string
+		ConfirmUrl string
+	}{
+		Newsletter: newsletter,
+		ConfirmUrl: confirmUrl,
+	}
+
+	var htmlBodyTpl bytes.Buffer
+	if err := HtmlTemplate.Execute(&htmlBodyTpl, data); err != nil {
+		return err
+	}
+
+	var textBodyTpl bytes.Buffer
+	if err := TextTemplate.Execute(&textBodyTpl, data); err != nil {
+		return err
+	}
+
+	return sm.sendEmail(email, htmlBodyTpl.String(), textBodyTpl.String())
 }
