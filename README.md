@@ -36,7 +36,7 @@ As for other functionality, you can achieve analytics and A/B testing using syst
 
 Subscriptions are stored in a DynamoDB table and are managed by 4 lambda functions with endpoints `/subscribe`, `/unsubscribe`, `/confirm` and `/subscribers`. The last endpoint is protected with BasicAuth for "admin" access (export/import of subscribers).
 
-See also [detailed endpoints docs](https://github.com/ribtoks/listing/blob/master/ENDPOINTS.md)
+See also [detailed endpoints docs](https://github.com/ribtoks/listing/blob/master/docs/ENDPOINTS.md)
 
 Bounces and Complaints are stored in additional DynamoDB table. This table is managed by another lambda function that is subscribed to SNS topic. AWS SES for a specific domain is a publisher to this SNS topic.
 
@@ -58,8 +58,8 @@ The only thing left to do is to send periodic emails to your subscription list.
 
 ## Deployment
 
-See [full documentation](https://github.com/ribtoks/xpiks/blob/master/DEPLOYMENT.md)
+See [full documentation](https://github.com/ribtoks/listing/blob/master/docs/DEPLOYMENT.md)
 
 ## Testing
 
-See [full documentation](https://github.com/ribtoks/xpiks/blob/master/TESTING.md)
+See [full documentation](https://github.com/ribtoks/listing/blob/master/docs/TESTING.md)
