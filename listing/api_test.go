@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -38,6 +40,11 @@ func (s *MapStore) key(newsletter, email string) string {
 	return newsletter + email
 }
 
+func (s *MapStore) contains(newsletter, email string) bool {
+	_, ok := s.items[s.key(newsletter, email)]
+	return ok
+}
+
 func (s *MapStore) AddSubscriber(newsletter, email string) error {
 	key := s.key(newsletter, email)
 	if _, ok := s.items[key]; ok {
@@ -70,6 +77,13 @@ func (s *MapStore) GetSubscribers(newsletter string) (subscribers []*Subscriber,
 		}
 	}
 	return subscribers, nil
+}
+
+func (s *MapStore) AddSubscribers(subscribers []*Subscriber) error {
+	for _, i := range subscribers {
+		s.items[s.key(i.Newsletter, i.Email)] = i
+	}
+	return nil
 }
 
 func (s *MapStore) ConfirmSubscriber(newsletter, email string) error {
@@ -239,7 +253,7 @@ func TestConfirmSubscribe(t *testing.T) {
 	}
 }
 
-func TestGetSubscribersWithoutAuth(t *testing.T) {
+func TestGetSubscribersUnauthorized(t *testing.T) {
 	srv := http.NewServeMux()
 	nr := NewTestResource(srv, NewTestStore())
 	nr.setup(srv)
@@ -313,15 +327,16 @@ func TestGetSubscribersWrongNewsletter(t *testing.T) {
 	q := req.URL.Query()
 	q.Add("newsletter", "test")
 	req.URL.RawQuery = q.Encode()
-
 	req.SetBasicAuth("any username", apiToken)
+
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
 	resp := w.Result()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusBadRequest {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
 	}
 }
 
@@ -335,6 +350,7 @@ func TestGetSubscribersOK(t *testing.T) {
 
 	nr := NewTestResource(srv, store)
 	nr.setup(srv)
+	nr.addNewsletters([]string{newsletter})
 
 	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
 	if err != nil {
@@ -351,7 +367,8 @@ func TestGetSubscribersOK(t *testing.T) {
 	resp := w.Result()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Unexpected status code %d", resp.StatusCode)
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -520,5 +537,115 @@ func TestUnsubscribe(t *testing.T) {
 	i := store.items[store.key(newsletter, email)]
 	if i.UnsubscribedAt.Time().Sub(i.CreatedAt.Time()) < 0 {
 		t.Errorf("Unsubscribe time not updated")
+	}
+}
+
+func TestPutSubscribersUnauthorized(t *testing.T) {
+	srv := http.NewServeMux()
+	nr := NewTestResource(srv, NewTestStore())
+	nr.setup(srv)
+
+	req, err := http.NewRequest("PUT", subscribersEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
+func TestPutSubscribersWrongNewsletter(t *testing.T) {
+	newsletter := "TestNewsletter"
+
+	srv := http.NewServeMux()
+	nr := NewTestResource(srv, NewTestStore())
+	nr.setup(srv)
+
+	var subscribers []*Subscriber
+	for i := 0; i < 10; i++ {
+		subscribers = append(subscribers, &Subscriber{
+			Newsletter:     newsletter,
+			Email:          fmt.Sprintf("foo%v@bar.com", i),
+			CreatedAt:      jsonTimeNow(),
+			UnsubscribedAt: incorrectTime,
+			ConfirmedAt:    incorrectTime,
+		})
+	}
+	data, err := json.Marshal(subscribers)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("PUT", subscribersEndpoint, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("any username", apiToken)
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+}
+
+func TestPutSubscribers(t *testing.T) {
+	newsletter := "TestNewsletter"
+
+	srv := http.NewServeMux()
+	store := NewTestStore()
+	nr := NewTestResource(srv, store)
+	nr.setup(srv)
+	nr.addNewsletters([]string{newsletter})
+
+	expectedEmails := make(map[string]bool)
+	var subscribers []*Subscriber
+	for i := 0; i < 10; i++ {
+		subscribers = append(subscribers, &Subscriber{
+			Newsletter:     newsletter,
+			Email:          fmt.Sprintf("foo%v@bar.com", i),
+			CreatedAt:      jsonTimeNow(),
+			UnsubscribedAt: incorrectTime,
+			ConfirmedAt:    incorrectTime,
+		})
+		expectedEmails[subscribers[i].Email] = true
+	}
+	data, err := json.Marshal(subscribers)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("PUT", subscribersEndpoint, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("any username", apiToken)
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+
+	for k, _ := range expectedEmails {
+		if !store.contains(newsletter, k) {
+			t.Errorf("Email not imported: %v", k)
+		}
 	}
 }

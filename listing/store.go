@@ -26,6 +26,7 @@ type Store interface {
 	AddSubscriber(newsletter, email string) error
 	RemoveSubscriber(newsletter, email string) error
 	GetSubscribers(newsletter string) (subscribers []*Subscriber, err error)
+	AddSubscribers(subscribers []*Subscriber) error
 	ConfirmSubscriber(newsletter, email string) error
 }
 
@@ -117,6 +118,10 @@ func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscr
 	})
 
 	return
+}
+
+func (s *DynamoDBStore) AddSubscribers(subscribers []*Subscriber) error {
+	return nil
 }
 
 func (s *DynamoDBStore) ConfirmSubscriber(newsletter, email string) error {

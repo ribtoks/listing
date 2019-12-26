@@ -26,7 +26,10 @@ const (
 	paramNewsletter = "newsletter"
 	paramToken      = "token"
 	// assume there cannot be such a huge http requests for subscription
-	maxBodySize = 512
+	kilobyte             = 1024
+	megabyte             = 1024 * kilobyte
+	maxSubscribeBodySize = kilobyte / 2
+	maxImportBodySize    = 25 * megabyte
 )
 
 func (nr *NewsletterResource) setup(router *http.ServeMux) {
@@ -78,11 +81,11 @@ func (nr *NewsletterResource) isValidNewsletter(n string) bool {
 	return ok
 }
 
-func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request) {
+func (nr *NewsletterResource) getSubscribers(w http.ResponseWriter, r *http.Request) {
 	newsletter := r.URL.Query().Get(paramNewsletter)
 
-	if newsletter == "" {
-		http.Error(w, "The newsletter query-string parameter is required", http.StatusBadRequest)
+	if !nr.isValidNewsletter(newsletter) {
+		http.Error(w, "The newsletter parameter is invalid", http.StatusBadRequest)
 		return
 	}
 
@@ -98,8 +101,64 @@ func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(emails)
 }
 
+func (nr *NewsletterResource) putSubscribers(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Content-Type header is not application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxImportBodySize)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+
+	var subscribers []*Subscriber
+	err := dec.Decode(&subscribers)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	ss := make([]*Subscriber, 0, len(subscribers))
+	for _, s := range subscribers {
+		if nr.isValidNewsletter(s.Newsletter) {
+			ss = append(ss, s)
+		}
+	}
+
+	if len(ss) == 0 {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	err = nr.store.AddSubscribers(ss)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		{
+			nr.getSubscribers(w, r)
+		}
+	case "PUT":
+		{
+			nr.putSubscribers(w, r)
+		}
+	default:
+		{
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+	}
+}
+
 func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+	r.Body = http.MaxBytesReader(w, r.Body, maxSubscribeBodySize)
 	err := r.ParseForm()
 	if err != nil {
 		log.Printf("error parsing form: %v", err)
