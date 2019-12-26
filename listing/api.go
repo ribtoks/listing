@@ -25,6 +25,8 @@ type NewsletterResource struct {
 const (
 	paramNewsletter = "newsletter"
 	paramToken      = "token"
+	// assume there cannot be such a huge http requests for subscription
+	maxBodySize = 512
 )
 
 func (nr *NewsletterResource) setup(router *http.ServeMux) {
@@ -70,13 +72,12 @@ func (nr *NewsletterResource) method(m string, next http.HandlerFunc) http.Handl
 
 func (nr *NewsletterResource) isValidNewsletter(n string) bool {
 	if n == "" {
-		return true
+		return false
 	}
 	_, ok := nr.newsletters[n]
 	return ok
 }
 
-// subscribers route.
 func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request) {
 	newsletter := r.URL.Query().Get(paramNewsletter)
 
@@ -97,8 +98,8 @@ func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(emails)
 }
 
-// subscribe route.
 func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 	err := r.ParseForm()
 	if err != nil {
 		log.Printf("error parsing form: %v", err)
