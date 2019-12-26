@@ -12,23 +12,31 @@
 
 ## About
 
-*Listing* is a small and simple service that allows to self-host email subscriptions list on AWS using Lambda, DynamoDB, SES and SNS. It handles email list subscribe/unsubscribe actions as well as email bounces and complaints.
+*Listing* is a small and simple service that allows to self-host email subscriptions list on AWS using Lambda, DynamoDB, SES and SNS. It handles email list subscribe/unsubscribe/confirm actions as well as email bounces and complaints.
 
 ### What problem it solves?
 
-All self-hosted email marketing solutions as of today like [tinycampaign](https://github.com/parkerj/tinycampaign), [audience](https://github.com/aniftyco/audience), [mail-for-good](https://github.com/freeCodeCamp/mail-for-good), [colossus](https://github.com/vitorfs/colossus) and others have few problems:
+Self-hosted email marketing solutions one can find today like [tinycampaign](https://github.com/parkerj/tinycampaign), [audience](https://github.com/aniftyco/audience), [mail-for-good](https://github.com/freeCodeCamp/mail-for-good), [colossus](https://github.com/vitorfs/colossus) and others have a few problems:
 
-*   a need to run a webserver all of the time (resources are not free)
+*   a need to run a webserver all of the time (resources are expensive)
 *   operational overhead (certificate, updates, security)
 *   they solve too many problems at the same time (subscription list, email sending, analytics, A/B testing, email templates)
 
-There's also [MoonMail](https://github.com/MoonMail/MoonMail) which is kind of a good approximation of a better system, but it is too complex to deploy and it tries to solve all problems at the same time as well. Also there is almost no documentation since they are interested in selling SaaS version of it.
+There's also a [MoonMail](https://github.com/MoonMail/MoonMail) which is kind of a good approximation of a better system, but it is too complex to deploy and it tries to solve all problems at the same time as well. And there is almost no documentation since they are interested in selling SaaS version of it.
 
-*Listing* is different. It focuses only on subscription list. You can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Finding good email templates is also not a problem. And there are many ways you can send those emails without a need to waste cloud computer resources at all other times.
+*Listing* is different. **It focuses only on building subscription list.** *Listing* uses AWS Lambda for managing subscribe/unsubscribe/confirm actions as well as bounces/complaints which are very well suited for this task since these are relatively rare events.
 
-*Listing* uses AWS Lambda for managing subscribe/unsubscribe actions as well as bounces/complaints which are very well suited for this task since they are relatively rare events.
+You can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Finding [good](https://github.com/InterNations/antwort) [email](https://github.com/leemunroe/responsive-html-email-template) [templates](https://github.com/mailgun/transactional-email-templates) or building ones using [available](http://mosaico.io/) [tools](https://beefree.io/) is also not a problem. And there are [many](https://github.com/rykov/paperboy) [ways](https://github.com/Circle-gg/thunder-mail) you can send those emails without a need to waste cloud computer resources at all other times.
 
-In order to send the emails to the subscription list managed by *Listing*, you will need a temporary resource (like your own computer or EC2 instance) and any software capable of sending emails via SMTP. One could recomment a [paperboy](https://github.com/rykov/paperboy) for that, but you can use even your favorite email client.
+## How to use Listing?
+
+1. Deploy *Listing* (described below)
+2. Test from the command line that everything works as expected (described below)
+3. Create html form for your website to subscribe to emails using *Listing* Lambda URL
+
+Everything else (confirmation, unsubscribe) will be handled in the emails or automatically.
+
+The only thing left to do is to send periodic emails to your subscription list.
 
 ## Deployment
 
@@ -39,7 +47,7 @@ Except of quite obvious prerequisites, the typical deployment procedure is as ea
 *   Buy/Own a custom domain
 *   [Create an AWS account](https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/)
 *   Configure and [verify your domain in AWS SES](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/verify-domain-procedure.html) (Simple Email Service)
-*   [Exit "sandbox" mode in SES](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/request-production-access.html) (you have to contact support)
+*   [Exit "sandbox" mode in SES](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/request-production-access.html) (you will have to contact support)
 *   Create "confirm"/"unsubscribed" pages on your website
 
 ### Install prerequisites:
