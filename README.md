@@ -12,7 +12,7 @@
 
 ## About
 
-*Listing* is a small and simple service that allows to self-host email subscriptions list on AWS using Lambda, DynamoDB, SES and SNS. It handles email list subscribe/unsubscribe/confirm actions as well as email bounces and complaints.
+*Listing* is a small and simple service that allows to self-host email subscriptions list on AWS using Lambda, DynamoDB, SES and SNS. It handles email list subscribe/unsubscribe/confirm actions as well as email bounces and complaints (if you use same SES account for sending the newsletter).
 
 ### What problem it solves?
 
@@ -24,9 +24,19 @@ Self-hosted email marketing solutions one can find today like [tinycampaign](htt
 
 There's also a [MoonMail](https://github.com/MoonMail/MoonMail) which is kind of a good approximation of a better system, but it is too complex to deploy and it tries to solve all problems at the same time as well. And there is almost no documentation since they are interested in selling SaaS version of it.
 
-*Listing* is different. **It focuses only on building subscription list.** *Listing* uses AWS Lambda for managing subscribe/unsubscribe/confirm actions as well as bounces/complaints which are very well suited for this task since these are relatively rare events.
+*Listing* is different. **It focuses only on building subscription list.** It is simple, well documented and easy to install.
 
-You can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Finding [good](https://github.com/InterNations/antwort) [email](https://github.com/leemunroe/responsive-html-email-template) [templates](https://github.com/mailgun/transactional-email-templates) or building ones using [available](http://mosaico.io/) [tools](https://beefree.io/) is also not a problem. And there are [many](https://github.com/rykov/paperboy) [ways](https://github.com/Circle-gg/thunder-mail) you can send those emails without a need to waste cloud computer resources at all other times.
+As for other functionality, you can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Finding [good](https://github.com/InterNations/antwort) [email](https://github.com/leemunroe/responsive-html-email-template) [templates](https://github.com/mailgun/transactional-email-templates) or building ones using [available](http://mosaico.io/) [tools](https://beefree.io/) is also not a problem. And there are [many](https://github.com/rykov/paperboy) [ways](https://github.com/Circle-gg/thunder-mail) you can send those emails without a need to waste cloud computer resources at all other times.
+
+### How does it work
+
+*Listing* manages arbitrary amount of subscription lists using few lambda functions and DynamoDB table.
+
+*Listing* uses so-called "double-confirmation" system where user has to confirm it's email even after entering it on your website and pressing "Subscribe" button. The reason is that this is way more reliable in terms of loyal audience building.
+
+Subscriptions are stored in a DynamoDB table and are managed by 4 lambda functions with endpoints `/subscribe`, `/unsubscribe`, `/confirm` and `/subscribers`. The last endpoint is protected with BasicAuth for "admin" access (export/import of subscribers).
+
+Bounces and Complaints are stored in additional DynamoDB table. This table is managed by another lambda function that is subscribed to SNS topic. AWS SES for a specific domain is a publisher to this SNS topic.
 
 ## How to use Listing
 
@@ -71,6 +81,8 @@ Copy example file to `secrets.json`
 `cp secrets.json.example secrets.json`
 
 and edit it.
+
+Most of the properties are self-descriptive. Redirect URLs are urls where user will be redirected to after pressing "Confirm", "Subscribe" or "Unsubscribe" buttons. `confirmUrl` is an url of one of the lambda functions used for email confirmation. `emailFrom` is an email that will be used to send this confirmation email. `supportedNewsletters` is semicolon-separated list of newsletter names. *Listing* will ignore all subscribe/unsubscribe requests for newsletter that are not in this list.
 
 ### Deploy DB and SNS topic
 
