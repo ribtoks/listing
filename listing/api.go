@@ -139,6 +139,7 @@ func (nr *NewsletterResource) putSubscribers(w http.ResponseWriter, r *http.Requ
 
 	err = nr.store.AddSubscribers(ss)
 	if err != nil {
+		log.Printf("Failed to import subscribers. err=%v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

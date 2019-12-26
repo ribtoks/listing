@@ -34,7 +34,7 @@ As for other functionality, you can achieve analytics and A/B testing using syst
 
 *Listing* uses so-called "double-confirmation" system where user has to confirm it's email even after entering it on your website and pressing "Subscribe" button. The reason is that this is way more reliable in terms of loyal audience building.
 
-Subscriptions are stored in a DynamoDB table and are managed by 4 lambda functions with endpoints `/subscribe`, `/unsubscribe`, `/confirm` and `/subscribers`. The last endpoint is protected with BasicAuth for "admin" access (export/import of subscribers).
+Subscriptions are stored in a DynamoDB table and are managed by a lambda function with endpoints `/subscribe`, `/unsubscribe`, `/confirm` and `/subscribers`. The last endpoint is protected with BasicAuth for "admin" access (export/import of subscribers).
 
 See also [detailed endpoints docs](https://github.com/ribtoks/listing/blob/master/docs/ENDPOINTS.md)
 

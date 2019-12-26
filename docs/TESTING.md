@@ -10,6 +10,10 @@ Run previous "subscription" command to the real email address and click "Confirm
 
 `curl -v -u :your-api-token https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev/subscribers?newsletter=NewsletterName`
 
+## Importing subscribers
+
+`curl -v -u :your-api-token -X PUT https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev/subscribers -H "Content-Type: application/json" --data-binary "@scripts/testsubscribers.json"`
+
 ## Handling bounce and complaint
 
 Send email to `bounce@simulator.amazonses.com` from SES UI in AWS Console and check DynamoDB table `listing-sesnotify` if it contains the bounce notification.

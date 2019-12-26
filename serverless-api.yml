@@ -10,18 +10,6 @@ provider:
     throttle:
       burstLimit: 10
       rateLimit: 2
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - "dynamodb:DescribeTable"
-        - "dynamodb:Query"
-        - "dynamodb:Scan"
-        - "dynamodb:GetItem"
-        - "dynamodb:PutItem"
-        - "dynamodb:UpdateItem"
-        - "dynamodb:DeleteItem"
-      Resource:
-        - { 'Fn::ImportValue': '${self:provider.stage}-SubscriptionsTableArn' }
   environment:
     SUPPORTED_NEWSLETTERS: ${self:custom.secrets.supportedNewsletters}
     SUBSCRIBERS_TABLE: ${self:custom.subscribersTableName}
@@ -41,60 +29,54 @@ functions:
   # "main" entry point into this application responsible for 
   # collecting subscribers, storing them in the table and sending
   # confirmation emails to them
-  listing-subscribe:
+  listing:
     handler: bin/listing
     events:
       - http:
           path: subscribe
           method: POST
           cors: true
-    iamRoleStatementsInherit: true
+      - http:
+          path: unsubscribe
+          method: GET
+          cors: true
+      - http:
+          path: confirm
+          method: GET
+          cors: true
+      - http:
+          path: subscribers
+          method: GET
+          cors: true
+      - http:
+          path: subscribers
+          method: PUT
+          cors: true
     iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "dynamodb:DescribeTable"
+          - "dynamodb:Query"
+          - "dynamodb:Scan"
+          - "dynamodb:GetItem"
+          - "dynamodb:PutItem"
+          - "dynamodb:UpdateItem"
+          - "dynamodb:DeleteItem"
+          - "dynamodb:BatchWriteItem"
+        Resource:
+          - { 'Fn::ImportValue': '${self:provider.stage}-SubscriptionsTableArn' }
       - Effect: Allow
         Action:
           - "ses:SendEmail"
           - "ses:SendRawEmail"
         Resource: "arn:aws:ses:${self:provider.region}:*:identity/*"
     environment:
-      SUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.subscribeRedirectUrl}
       CONFIRM_URL: ${self:custom.secrets.confirmUrl}
       EMAIL_FROM: ${self:custom.secrets.emailFrom}
       TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
-  # function called when user clicks "unsubscribe" link in the email
-  listing-unsubscribe:
-    handler: bin/listing
-    events:
-      - http:
-          path: unsubscribe
-          method: GET
-          cors: true
-    iamRoleStatementsInherit: true
-    environment:
-      UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
-      TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
-  # function called when user clicks "confirm email" in the initial signup
-  listing-confirm:
-    handler: bin/listing
-    events:
-      - http:
-          path: confirm
-          method: GET
-          cors: true
-    iamRoleStatementsInherit: true
-    environment:
+      SUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.subscribeRedirectUrl}
       CONFIRM_REDIRECT_URL: ${self:custom.secrets.confirmRedirectUrl}
-      TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
-  # "admin area" that allows to export and import all subscribers
-  # this API is protected
-  listing-subscribers:
-    handler: bin/listing
-    events:
-      - http:
-          path: subscribers
-          method: GET
-          cors: true
-    iamRoleStatementsInherit: true
-    environment:
+      UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
       API_TOKEN: ${self:custom.secrets.apiToken}
   # lambda used to handle bounce and complaint notifications from SES
   listing-sesnotify:
