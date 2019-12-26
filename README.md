@@ -1,22 +1,35 @@
 # listing
 
+[![Build Status](https://travis-ci.org/ribtoks/listing.svg?branch=master)](https://travis-ci.org/ribtoks/listing)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ribtoks/listing)](https://goreportcard.com/report/github.com/ribtoks/listing)
+
+![license](https://img.shields.io/badge/license-MIT-blue.svg)
+![copyright](https://img.shields.io/badge/%C2%A9-Taras_Kushnir-blue.svg)
+![language](https://img.shields.io/badge/language-go-blue.svg)
+
 ## About
 
-*Listing* is a very small and simple service that allows to self-host email subscriptions list on AWS using Lambda, DynamoDB, SES and SNS.
+*Listing* is a small and simple service that allows to self-host email subscriptions list on AWS using Lambda, DynamoDB, SES and SNS. It handles email list subscribe/unsubscribe actions as well as email bounces and complaints.
 
 ### What problem it solves?
 
-All self-hosted email marketing solutions like [tinycampaign](https://github.com/parkerj/tinycampaign), [audience](https://github.com/aniftyco/audience), [mail-for-good](https://github.com/freeCodeCamp/mail-for-good), [colossus](https://github.com/vitorfs/colossus) have few problems:
+All self-hosted email marketing solutions as of today like [tinycampaign](https://github.com/parkerj/tinycampaign), [audience](https://github.com/aniftyco/audience), [mail-for-good](https://github.com/freeCodeCamp/mail-for-good), [colossus](https://github.com/vitorfs/colossus) and others have few problems:
 
 *   a need to run a webserver all of the time (resources are not free)
 *   operational overhead (certificate, updates, security)
-*   they solve too many problems at the same time (subscriptions, sending, analytics, A/B testing)
+*   they solve too many problems at the same time (subscription list, email sending, analytics, A/B testing, email templates)
 
-There's also [MoonMail](https://github.com/MoonMail/MoonMail) which is kind of a good approximation of such system, but it is too complex to deploy (also there almost no documentation) and it also tries to solve all problems at the same time.
+There's also [MoonMail](https://github.com/MoonMail/MoonMail) which is kind of a good approximation of a better system, but it is too complex to deploy and it tries to solve all problems at the same time as well. Also there is almost no documentation since they are interested in selling SaaS version of it.
 
-*Listing* is different. It focuses only on subscription list. You can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Also there are many ways you can send those emails and you don't need to waste computer resources at other times. *Listing* uses AWS Lambda for managing subscribe/unsubscribe actions as well as bounces/complaints which are very well suited for this task since they are relatively rare events.
+*Listing* is different. It focuses only on subscription list. You can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Finding good email templates is also not a problem. And there are many ways you can send those emails without a need to waste cloud computer resources at all other times.
+
+*Listing* uses AWS Lambda for managing subscribe/unsubscribe actions as well as bounces/complaints which are very well suited for this task since they are relatively rare events.
+
+In order to send the emails to the subscription list managed by *Listing*, you will need a temporary resource (like your own computer or EC2 instance) and any software capable of sending emails via SMTP. One could recomment a [paperboy](https://github.com/rykov/paperboy) for that, but you can use even your favorite email client.
 
 ## Deployment
+
+Except of quite obvious prerequisites, the typical deployment procedure is as easy as editing `secrets.json` and running `serverless deploy` in the root of the repository. See detailed steps below.
 
 ### Generic prerequisites
 
@@ -44,21 +57,34 @@ and edit it.
 
 ### Deploy DB and SNS topic
 
+Config file `serverless-db.yml` describes resources that will not be frequently changed. Usually you would deploy them only once.
+
 `serverless deploy --config serverless-db.yml`
+
+In order to specify stage and region, add parameters `--stage dev --region "us-east-1"`.
 
 ### Deploy API
 
-`serverless deploy --config serverless-api.yml`
+Config file `serverless-api.yml` contains definitions of lambda functions written in Go. If you are a developer, you may want to redeploy them frequently.
+
+You can use `make deploy` to run this step or you can use 2 commands:
+
+```
+make build
+serverless deploy --config serverless-api.yml
+```
+
+In order to specify stage and region, add parameters `--stage dev --region "us-east-1"`.
 
 ### Configure confirm and redirect URLs
 
-Go to AWS Console UI and set `CONFIRM_URL` for `listing-subscribe` Lambda function to point to the API Gateway address for `listing-confirm` address.
+Go to AWS Console UI and in Lambda section find `listing-subscribe` function. Set `CONFIRM_URL` in it's environmental variables to point to the API Gateway address for `listing-confirm` function's address.
 
 (optional - you can do that in the end) Configure `SUBSCRIBE_REDIRECT_URL`, `UNSUBSCRIBE_REDIRECT_URL`, `CONFIRM_REDIRECT_URL` in the appropriate lambda function to point to the pages on your website.
 
 ### Configure SNS topic for bounces and complaints
 
-Go to [AWS Console UI and set Bounce and Complaint](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-sns-notifications.html) SNS topic's ARN for your SES domain to the `listing-ses-notifications` topic. You can find it in `SES -> Domains -> (select your domain) -> Notifications`. Arn will be an output of `serverless deploy` command.
+Go to [AWS Console UI and set Bounce and Complaint](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-sns-notifications.html) SNS topic's ARN for your SES domain to the `listing-ses-notifications` topic. You can find it in `SES -> Domains -> (select your domain) -> Notifications`. Arn will be an output of `serverless deploy` command for `serverless-db.yml` config. Example of such ARN: `arn:aws:sns:us-east-1:1234567890:dev-listing-ses-notifications`.
 
 ## Testing
 
