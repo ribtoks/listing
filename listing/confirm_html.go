@@ -1,6 +1,8 @@
 package main
 
 const (
+	// HtmlBody is a template of the email used for
+	// confirmation of the subscription emails
 	HtmlBody = `<!doctype html>
 <html>
   <head>

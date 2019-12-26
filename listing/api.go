@@ -8,6 +8,8 @@ import (
 	"github.com/ribtoks/checkmail"
 )
 
+// NewsletterResource manages http requests and data storage
+// for newsletter subscriptions
 type NewsletterResource struct {
 	apiToken               string
 	secret                 string
@@ -25,14 +27,14 @@ const (
 	paramToken      = "token"
 )
 
-func (nr *NewsletterResource) Setup(router *http.ServeMux) {
+func (nr *NewsletterResource) setup(router *http.ServeMux) {
 	router.HandleFunc("/subscribers", nr.auth(nr.subscribers))
 	router.HandleFunc("/subscribe", nr.subscribe)
 	router.HandleFunc("/unsubscribe", nr.unsubscribe)
 	router.HandleFunc("/confirm", nr.confirm)
 }
 
-func (nr *NewsletterResource) AddNewsletters(n []string) {
+func (nr *NewsletterResource) addNewsletters(n []string) {
 	for _, i := range n {
 		nr.newsletters[i] = true
 	}

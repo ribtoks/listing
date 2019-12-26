@@ -26,6 +26,7 @@ func (t *JSONTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// Time returns builtin time.Time for current JSONTime
 func (t JSONTime) Time() time.Time {
 	return time.Time(t)
 }

@@ -1,5 +1,7 @@
 package main
 
+// Subscriber incapsulates newsletter subscriber information
+// stored in the DynamoDB table
 type Subscriber struct {
 	Newsletter     string   `json:"newsletter"`
 	Email          string   `json:"email"`

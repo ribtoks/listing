@@ -81,9 +81,9 @@ func main() {
 	}
 
 	sn := strings.Split(supportedNewsletters, ";")
-	newsletter.AddNewsletters(sn)
+	newsletter.addNewsletters(sn)
 
-	newsletter.Setup(router)
+	newsletter.setup(router)
 	handlerLambda = httpadapter.New(router)
 
 	lambda.Start(Handler)
