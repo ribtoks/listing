@@ -38,8 +38,9 @@ type DynamoDBStore struct {
 // make sure DynamoDBStore implements interface
 var _ common.SubscribersStore = (*DynamoDBStore)(nil)
 
-func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
+func (s *DynamoDBStore) AddSubscriber(newsletter, email, name string) error {
 	i, err := dynamodbattribute.MarshalMap(common.Subscriber{
+		Name:           name,
 		Newsletter:     newsletter,
 		Email:          email,
 		CreatedAt:      common.JsonTimeNow(),

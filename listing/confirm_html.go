@@ -354,7 +354,7 @@ const (
                   <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                     <tr>
                       <td>
-                        <p>Hello,</p>
+                        <p>Hello {{.FirstName}}</p>
                         <p>Thank you for subscribing to {{.Newsletter}} newsletter! Please confirm your email by clicking button below.</p>
                         <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
                           <tbody>
@@ -387,7 +387,7 @@ const (
               <table role="presentation" border="0" cellpadding="0" cellspacing="0">
                 <tr>
                   <td class="content-block">
-										<span class="apple-link">{{.Newsletter}} team</span>
+										<span class="apple-link">{{.Newsletter}} newsletter</span>
                   </td>
                 </tr>
               </table>

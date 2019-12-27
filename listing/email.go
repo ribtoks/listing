@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"net/url"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -119,18 +120,22 @@ func (sm *SESMailer) sendEmail(email, htmlBody, textBody string) error {
 
 }
 
-func (sm *SESMailer) SendConfirmation(newsletter, email string, confirmBaseURL string) error {
-	confirmUrl, err := sm.confirmURL(newsletter, email, confirmBaseURL)
+func (sm *SESMailer) SendConfirmation(newsletter, email, name, confirmBaseURL string) error {
+	confirmURL, err := sm.confirmURL(newsletter, email, confirmBaseURL)
 	if err != nil {
 		return err
 	}
 
+	nameParts := strings.Split(strings.TrimSpace(name), " ")
+
 	data := struct {
 		Newsletter string
 		ConfirmURL string
+		FirstName  string
 	}{
 		Newsletter: newsletter,
-		ConfirmURL: confirmUrl,
+		ConfirmURL: confirmURL,
+		FirstName:  strings.TrimSpace(nameParts[0]),
 	}
 
 	var htmlBodyTpl bytes.Buffer

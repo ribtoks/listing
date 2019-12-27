@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/ribtoks/checkmail"
 	"github.com/ribtoks/listing/pkg/common"
@@ -191,16 +192,19 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = nr.store.AddSubscriber(newsletter, email)
+	// name is optional
+	name := strings.TrimSpace(r.FormValue("name"))
+
+	err = nr.store.AddSubscriber(newsletter, email, name)
 	if err != nil {
-		log.Printf("Failed to add subscription. email=%q newsletter=%q err=%v", email, newsletter, err)
+		log.Printf("Failed to add subscription. email=%q newsletter=%q name=%v err=%v", email, newsletter, name, err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Added subscription email=%q newsletter=%q", email, newsletter)
+	log.Printf("Added subscription email=%q newsletter=%q name=%v", email, newsletter, name)
 
-	nr.mailer.SendConfirmation(newsletter, email, nr.confirmURL)
+	nr.mailer.SendConfirmation(newsletter, email, name, nr.confirmURL)
 
 	w.Header().Set("Location", nr.subscribeRedirectURL)
 	http.Redirect(w, r, nr.subscribeRedirectURL, http.StatusFound)
