@@ -15,7 +15,6 @@ provider:
     SUBSCRIBERS_TABLE: ${self:custom.subscribersTableName}
 
 plugins:
-  - serverless-localstack
   - serverless-iam-roles-per-function
 
 package:
@@ -103,17 +102,4 @@ custom:
   stages:
     - local
     - dev
-  localstack:
-    debug: true
-    stages:
-      # list of stages for which the plugin should be enabled
-      - local
-    host: http://localhost  # optional - LocalStack host to connect to
-    autostart: false  # optional - start LocalStack in Docker on Serverless deploy
-    lambda:
-      # Enable this flag to improve performance
-      mountCode: false
-    docker:
-      # Enable this flag to run "docker ..." commands as sudo
-      sudo: false
 
