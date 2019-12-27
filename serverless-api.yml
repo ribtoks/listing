@@ -78,7 +78,7 @@ functions:
       UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
       API_TOKEN: ${self:custom.secrets.apiToken}
   # lambda used to handle bounce and complaint notifications from SES
-  listing-sesnotify:
+  sesnotify:
     handler: bin/sesnotify
     events:
       - sns:
