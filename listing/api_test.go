@@ -12,7 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/ribtoks/listing/pkg/common"
 )
 
 const (
@@ -31,10 +32,10 @@ func (m *DevNullMailer) SendConfirmation(newsletter, email string, confirmUrl st
 }
 
 type MapStore struct {
-	items map[string]*Subscriber
+	items map[string]*common.Subscriber
 }
 
-var _ Store = (*MapStore)(nil)
+var _ common.SubscribersStore = (*MapStore)(nil)
 
 func (s *MapStore) key(newsletter, email string) string {
 	return newsletter + email
@@ -51,10 +52,10 @@ func (s *MapStore) AddSubscriber(newsletter, email string) error {
 		return errors.New("Subscriber already exists")
 	}
 
-	s.items[key] = &Subscriber{
+	s.items[key] = &common.Subscriber{
 		Newsletter:     newsletter,
 		Email:          email,
-		CreatedAt:      jsonTimeNow(),
+		CreatedAt:      common.JsonTimeNow(),
 		ConfirmedAt:    incorrectTime,
 		UnsubscribedAt: incorrectTime,
 	}
@@ -64,13 +65,13 @@ func (s *MapStore) AddSubscriber(newsletter, email string) error {
 func (s *MapStore) RemoveSubscriber(newsletter, email string) error {
 	key := s.key(newsletter, email)
 	if i, ok := s.items[key]; ok {
-		i.UnsubscribedAt = JSONTime(time.Now())
+		i.UnsubscribedAt = common.JsonTimeNow()
 		return nil
 	}
 	return errors.New("Subscriber does not exist")
 }
 
-func (s *MapStore) GetSubscribers(newsletter string) (subscribers []*Subscriber, err error) {
+func (s *MapStore) GetSubscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
 	for key, value := range s.items {
 		if strings.HasPrefix(key, newsletter) {
 			subscribers = append(subscribers, value)
@@ -79,7 +80,7 @@ func (s *MapStore) GetSubscribers(newsletter string) (subscribers []*Subscriber,
 	return subscribers, nil
 }
 
-func (s *MapStore) AddSubscribers(subscribers []*Subscriber) error {
+func (s *MapStore) AddSubscribers(subscribers []*common.Subscriber) error {
 	for _, i := range subscribers {
 		s.items[s.key(i.Newsletter, i.Email)] = i
 	}
@@ -89,13 +90,13 @@ func (s *MapStore) AddSubscribers(subscribers []*Subscriber) error {
 func (s *MapStore) ConfirmSubscriber(newsletter, email string) error {
 	key := s.key(newsletter, email)
 	if i, ok := s.items[key]; ok {
-		i.ConfirmedAt = JSONTime(time.Now())
+		i.ConfirmedAt = common.JsonTimeNow()
 		return nil
 	}
 	return errors.New("Subscriber does not exist")
 }
 
-func NewTestResource(router *http.ServeMux, store Store) *NewsletterResource {
+func NewTestResource(router *http.ServeMux, store common.SubscribersStore) *NewsletterResource {
 	newsletters := &NewsletterResource{
 		store:       store,
 		secret:      secret,
@@ -108,7 +109,7 @@ func NewTestResource(router *http.ServeMux, store Store) *NewsletterResource {
 
 func NewTestStore() *MapStore {
 	return &MapStore{
-		items: make(map[string]*Subscriber),
+		items: make(map[string]*common.Subscriber),
 	}
 }
 
@@ -225,7 +226,7 @@ func TestConfirmSubscribe(t *testing.T) {
 
 	data := url.Values{}
 	data.Set("newsletter", newsletter)
-	data.Set("token", Sign(secret, email))
+	data.Set("token", common.Sign(secret, email))
 
 	req, err := http.NewRequest("GET", confirmEndpoint, nil)
 	if err != nil {
@@ -234,7 +235,7 @@ func TestConfirmSubscribe(t *testing.T) {
 
 	q := req.URL.Query()
 	q.Add("newsletter", newsletter)
-	q.Add("token", Sign(secret, email))
+	q.Add("token", common.Sign(secret, email))
 	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()
@@ -376,7 +377,7 @@ func TestGetSubscribersOK(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ss := make([]*Subscriber, 0)
+	ss := make([]*common.Subscriber, 0)
 	err = json.Unmarshal(body, &ss)
 	if err != nil {
 		t.Fatal(err)
@@ -518,7 +519,7 @@ func TestUnsubscribe(t *testing.T) {
 	}
 	q := req.URL.Query()
 	q.Add("newsletter", newsletter)
-	q.Add("token", Sign(secret, email))
+	q.Add("token", common.Sign(secret, email))
 	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()
@@ -567,12 +568,12 @@ func TestPutSubscribersWrongNewsletter(t *testing.T) {
 	nr := NewTestResource(srv, NewTestStore())
 	nr.setup(srv)
 
-	var subscribers []*Subscriber
+	var subscribers []*common.Subscriber
 	for i := 0; i < 10; i++ {
-		subscribers = append(subscribers, &Subscriber{
+		subscribers = append(subscribers, &common.Subscriber{
 			Newsletter:     newsletter,
 			Email:          fmt.Sprintf("foo%v@bar.com", i),
-			CreatedAt:      jsonTimeNow(),
+			CreatedAt:      common.JsonTimeNow(),
 			UnsubscribedAt: incorrectTime,
 			ConfirmedAt:    incorrectTime,
 		})
@@ -610,12 +611,12 @@ func TestPutSubscribers(t *testing.T) {
 	nr.addNewsletters([]string{newsletter})
 
 	expectedEmails := make(map[string]bool)
-	var subscribers []*Subscriber
+	var subscribers []*common.Subscriber
 	for i := 0; i < 10; i++ {
-		subscribers = append(subscribers, &Subscriber{
+		subscribers = append(subscribers, &common.Subscriber{
 			Newsletter:     newsletter,
 			Email:          fmt.Sprintf("foo%v@bar.com", i),
-			CreatedAt:      jsonTimeNow(),
+			CreatedAt:      common.JsonTimeNow(),
 			UnsubscribedAt: incorrectTime,
 			ConfirmedAt:    incorrectTime,
 		})

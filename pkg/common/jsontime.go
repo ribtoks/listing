@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"fmt"
@@ -11,7 +11,8 @@ const jsonTimeLayout = time.RFC3339
 // JSONTime is the time.Time with JSON marshal and unmarshal capability
 type JSONTime time.Time
 
-func jsonTimeNow() JSONTime {
+// JsonTimeNow() is an alias to time.Now() casted to JSONTime
+func JsonTimeNow() JSONTime {
 	return JSONTime(time.Now().UTC())
 }
 

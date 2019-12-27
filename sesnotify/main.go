@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/ribtoks/listing/pkg/common"
 )
 
 var (
@@ -21,7 +22,7 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 
 	for _, record := range snsEvent.Records {
 		snsRecord := record.SNS
-		var sesMessage SesMessage
+		var sesMessage common.SesMessage
 		err := json.Unmarshal([]byte(snsRecord.Message), &sesMessage)
 		if err != nil {
 			log.Printf("Error parsing message: %v", err)

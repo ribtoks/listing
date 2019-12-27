@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ses"
+	"github.com/ribtoks/listing/pkg/common"
 )
 
 const (
@@ -35,11 +36,6 @@ You are receiveing this email because somebody, hopefully you, subscribed to {{.
 `
 )
 
-// Mailer is an interface to sending confirmation emails for subscriptions
-type Mailer interface {
-	SendConfirmation(newsletter, email string, confirmURL string) error
-}
-
 // SESMailer is an implementation of Mailer interface that works with AWS SES
 type SESMailer struct {
 	sender string
@@ -47,8 +43,10 @@ type SESMailer struct {
 	svc    *ses.SES
 }
 
+var _ common.Mailer = (*SESMailer)(nil)
+
 func (sm *SESMailer) confirmURL(newsletter, email string, confirmBaseURL string) (string, error) {
-	token := Sign(sm.secret, email)
+	token := common.Sign(sm.secret, email)
 	baseUrl, err := url.Parse(confirmBaseURL)
 	if err != nil {
 		log.Println("Malformed URL: ", err.Error())

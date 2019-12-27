@@ -1,4 +1,13 @@
-package main
+package common
+
+type SesNotification struct {
+	Email        string   `json:"email"`
+	From         string   `json:"from"`
+	ReceivedAt   JSONTime `json:"received_at"`
+	Notification string   `json:"notification"`
+}
+
+// types used for deserializing of SES notifications
 
 type SesMessage struct {
 	NotificationType string                 `json:"notificationType"`

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/ribtoks/checkmail"
+	"github.com/ribtoks/listing/pkg/common"
 )
 
 // NewsletterResource manages http requests and data storage
@@ -18,8 +19,8 @@ type NewsletterResource struct {
 	confirmRedirectURL     string
 	confirmURL             string
 	newsletters            map[string]bool
-	store                  Store
-	mailer                 Mailer
+	store                  common.SubscribersStore
+	mailer                 common.Mailer
 }
 
 const (
@@ -111,14 +112,14 @@ func (nr *NewsletterResource) putSubscribers(w http.ResponseWriter, r *http.Requ
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 
-	var subscribers []*Subscriber
+	var subscribers []*common.Subscriber
 	err := dec.Decode(&subscribers)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	ss := make([]*Subscriber, 0, len(subscribers))
+	ss := make([]*common.Subscriber, 0, len(subscribers))
 	for _, s := range subscribers {
 		if !nr.isValidNewsletter(s.Newsletter) {
 			log.Printf("Skipping unsupported newsletter. value=%v", s.Newsletter)
@@ -128,7 +129,7 @@ func (nr *NewsletterResource) putSubscribers(w http.ResponseWriter, r *http.Requ
 			log.Printf("Skipping invalid email. value=%v", s.Email)
 			continue
 		}
-		s.CreatedAt = jsonTimeNow()
+		s.CreatedAt = common.JsonTimeNow()
 		ss = append(ss, s)
 	}
 
@@ -225,7 +226,7 @@ func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	email, ok := Unsign(nr.secret, unsubscribeToken)
+	email, ok := common.Unsign(nr.secret, unsubscribeToken)
 	if !ok {
 		log.Printf("Failed to unsign token. value=%q", unsubscribeToken)
 		http.Error(w, "Invalid unsubscribe token", http.StatusBadRequest)
@@ -258,7 +259,7 @@ func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, ok := Unsign(nr.secret, subscribeToken)
+	email, ok := common.Unsign(nr.secret, subscribeToken)
 	if !ok {
 		log.Printf("Failed to unsign token. value=%q", subscribeToken)
 		http.Error(w, "Invalid subscribe token", http.StatusBadRequest)

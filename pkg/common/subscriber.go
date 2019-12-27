@@ -1,4 +1,4 @@
-package main
+package common
 
 // Subscriber incapsulates newsletter subscriber information
 // stored in the DynamoDB table

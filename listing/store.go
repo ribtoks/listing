@@ -10,10 +10,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/ribtoks/listing/pkg/common"
 )
 
 var (
-	incorrectTime  = JSONTime(time.Unix(1, 1))
+	incorrectTime  = common.JSONTime(time.Unix(1, 1))
 	errChunkTooBig = errors.New("Chunk of data contains more than allowed 25 items")
 )
 
@@ -29,27 +30,19 @@ func NewStore(table string, sess *session.Session) *DynamoDBStore {
 	}
 }
 
-type Store interface {
-	AddSubscriber(newsletter, email string) error
-	RemoveSubscriber(newsletter, email string) error
-	GetSubscribers(newsletter string) (subscribers []*Subscriber, err error)
-	AddSubscribers(subscribers []*Subscriber) error
-	ConfirmSubscriber(newsletter, email string) error
-}
-
 type DynamoDBStore struct {
 	TableName string
 	Client    dynamodbiface.DynamoDBAPI
 }
 
 // make sure DynamoDBStore implements interface
-var _ Store = (*DynamoDBStore)(nil)
+var _ common.SubscribersStore = (*DynamoDBStore)(nil)
 
 func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
-	i, err := dynamodbattribute.MarshalMap(Subscriber{
+	i, err := dynamodbattribute.MarshalMap(common.Subscriber{
 		Newsletter:     newsletter,
 		Email:          email,
-		CreatedAt:      jsonTimeNow(),
+		CreatedAt:      common.JsonTimeNow(),
 		UnsubscribedAt: incorrectTime,
 		ConfirmedAt:    incorrectTime,
 	})
@@ -72,9 +65,9 @@ func (s *DynamoDBStore) AddSubscriber(newsletter, email string) error {
 
 func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
 	updateVal := struct {
-		UnsubscribedAt JSONTime `json:":unsubscribed_at"`
+		UnsubscribedAt common.JSONTime `json:":unsubscribed_at"`
 	}{
-		UnsubscribedAt: jsonTimeNow(),
+		UnsubscribedAt: common.JsonTimeNow(),
 	}
 
 	update, err := dynamodbattribute.MarshalMap(updateVal)
@@ -99,7 +92,7 @@ func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
 	return err
 }
 
-func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscriber, err error) {
+func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
 	query := &dynamodb.QueryInput{
 		TableName:              &s.TableName,
 		KeyConditionExpression: aws.String(`newsletter = :newsletter`),
@@ -111,7 +104,7 @@ func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscr
 	}
 
 	err = s.Client.QueryPages(query, func(page *dynamodb.QueryOutput, more bool) bool {
-		var items []*Subscriber
+		var items []*common.Subscriber
 		err := dynamodbattribute.UnmarshalListOfMaps(page.Items, &items)
 		if err != nil {
 			// print the error and continue receiving pages
@@ -127,7 +120,7 @@ func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*Subscr
 	return
 }
 
-func (s *DynamoDBStore) AddSubscribersChunk(subscribers []*Subscriber) error {
+func (s *DynamoDBStore) AddSubscribersChunk(subscribers []*common.Subscriber) error {
 	// AWS DynamoDB restriction
 	if len(subscribers) > dynamoDBChunkSize {
 		return errChunkTooBig
@@ -158,7 +151,7 @@ func (s *DynamoDBStore) AddSubscribersChunk(subscribers []*Subscriber) error {
 	return err
 }
 
-func (s *DynamoDBStore) AddSubscribers(subscribers []*Subscriber) error {
+func (s *DynamoDBStore) AddSubscribers(subscribers []*common.Subscriber) error {
 	for i := 0; i < len(subscribers); i += dynamoDBChunkSize {
 		end := i + dynamoDBChunkSize
 
@@ -176,9 +169,9 @@ func (s *DynamoDBStore) AddSubscribers(subscribers []*Subscriber) error {
 
 func (s *DynamoDBStore) ConfirmSubscriber(newsletter, email string) error {
 	updateVal := struct {
-		ConfirmedAt JSONTime `json:":confirmed_at"`
+		ConfirmedAt common.JSONTime `json:":confirmed_at"`
 	}{
-		ConfirmedAt: jsonTimeNow(),
+		ConfirmedAt: common.JsonTimeNow(),
 	}
 
 	update, err := dynamodbattribute.MarshalMap(updateVal)

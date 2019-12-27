@@ -1,14 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/ribtoks/listing/pkg/common"
 )
 
 const (
@@ -17,28 +16,6 @@ const (
 	complaintType  = "complaint"
 )
 
-// JSONTime is an alias that allows standartized
-// serialization and deserialization with strings
-type JSONTime time.Time
-
-func (t *JSONTime) MarshalJSON() ([]byte, error) {
-	ct := time.Time(*t)
-	str := fmt.Sprintf("%q", ct.Format(time.RFC3339))
-	return []byte(str), nil
-}
-
-type sesNotification struct {
-	Email        string   `json:"email"`
-	From         string   `json:"from"`
-	ReceivedAt   JSONTime `json:"received_at"`
-	Notification string   `json:"notification"`
-}
-
-type Store interface {
-	AddBounce(email, from string, isTransient bool) error
-	AddComplaint(email, from string) error
-}
-
 // DynamoDBStore is an implementation of Store interface
 // that is capable of working with AWS DynamoDB
 type DynamoDBStore struct {
@@ -46,6 +23,9 @@ type DynamoDBStore struct {
 	Client    dynamodbiface.DynamoDBAPI
 }
 
+var _ common.NotificationStore = (*DynamoDBStore)(nil)
+
+// NewStore returns new instance of DynamoDBStore
 func NewStore(table string, sess *session.Session) *DynamoDBStore {
 	return &DynamoDBStore{
 		Client:    dynamodb.New(sess),
@@ -53,13 +33,10 @@ func NewStore(table string, sess *session.Session) *DynamoDBStore {
 	}
 }
 
-// make sure DynamoDBStore implements interface
-var _ Store = (*DynamoDBStore)(nil)
-
 func (s *DynamoDBStore) StoreNotification(email, from string, t string) error {
-	i, err := dynamodbattribute.MarshalMap(sesNotification{
+	i, err := dynamodbattribute.MarshalMap(common.SesNotification{
 		Email:        email,
-		ReceivedAt:   JSONTime(time.Now().UTC()),
+		ReceivedAt:   common.JsonTimeNow(),
 		Notification: t,
 		From:         from,
 	})
