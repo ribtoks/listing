@@ -4,7 +4,7 @@ package common
 type SubscribersStore interface {
 	AddSubscriber(newsletter, email, name string) error
 	RemoveSubscriber(newsletter, email string) error
-	GetSubscribers(newsletter string) (subscribers []*Subscriber, err error)
+	Subscribers(newsletter string) (subscribers []*Subscriber, err error)
 	AddSubscribers(subscribers []*Subscriber) error
 	ConfirmSubscriber(newsletter, email string) error
 }
@@ -16,7 +16,8 @@ type Mailer interface {
 
 // NotificationsStore is an interface used to manage SES bounce and complaint
 // notifications from sesnotify API
-type NotificationStore interface {
+type NotificationsStore interface {
 	AddBounce(email, from string, isTransient bool) error
 	AddComplaint(email, from string) error
+	Notifications() (notifications []*SesNotification, err error)
 }

@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"errors"
@@ -22,23 +22,23 @@ const (
 	dynamoDBChunkSize = 25
 )
 
-// NewStore creates an instance of DynamoDBStore struct
-func NewStore(table string, sess *session.Session) *DynamoDBStore {
-	return &DynamoDBStore{
+// NewSubscribersStore creates an instance of SubscribersDynamoDB struct
+func NewSubscribersStore(table string, sess *session.Session) *SubscribersDynamoDB {
+	return &SubscribersDynamoDB{
 		Client:    dynamodb.New(sess),
 		TableName: table,
 	}
 }
 
-type DynamoDBStore struct {
+type SubscribersDynamoDB struct {
 	TableName string
 	Client    dynamodbiface.DynamoDBAPI
 }
 
-// make sure DynamoDBStore implements interface
-var _ common.SubscribersStore = (*DynamoDBStore)(nil)
+// make sure SubscribersDynamoDB implements interface
+var _ common.SubscribersStore = (*SubscribersDynamoDB)(nil)
 
-func (s *DynamoDBStore) AddSubscriber(newsletter, email, name string) error {
+func (s *SubscribersDynamoDB) AddSubscriber(newsletter, email, name string) error {
 	i, err := dynamodbattribute.MarshalMap(common.Subscriber{
 		Name:           name,
 		Newsletter:     newsletter,
@@ -64,7 +64,7 @@ func (s *DynamoDBStore) AddSubscriber(newsletter, email, name string) error {
 	return nil
 }
 
-func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
+func (s *SubscribersDynamoDB) RemoveSubscriber(newsletter, email string) error {
 	updateVal := struct {
 		UnsubscribedAt common.JSONTime `json:":unsubscribed_at"`
 	}{
@@ -93,7 +93,7 @@ func (s *DynamoDBStore) RemoveSubscriber(newsletter, email string) error {
 	return err
 }
 
-func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
+func (s *SubscribersDynamoDB) Subscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
 	query := &dynamodb.QueryInput{
 		TableName:              &s.TableName,
 		KeyConditionExpression: aws.String(`newsletter = :newsletter`),
@@ -121,7 +121,7 @@ func (s *DynamoDBStore) GetSubscribers(newsletter string) (subscribers []*common
 	return
 }
 
-func (s *DynamoDBStore) AddSubscribersChunk(subscribers []*common.Subscriber) error {
+func (s *SubscribersDynamoDB) AddSubscribersChunk(subscribers []*common.Subscriber) error {
 	// AWS DynamoDB restriction
 	if len(subscribers) > dynamoDBChunkSize {
 		return errChunkTooBig
@@ -152,7 +152,7 @@ func (s *DynamoDBStore) AddSubscribersChunk(subscribers []*common.Subscriber) er
 	return err
 }
 
-func (s *DynamoDBStore) AddSubscribers(subscribers []*common.Subscriber) error {
+func (s *SubscribersDynamoDB) AddSubscribers(subscribers []*common.Subscriber) error {
 	for i := 0; i < len(subscribers); i += dynamoDBChunkSize {
 		end := i + dynamoDBChunkSize
 
@@ -168,7 +168,7 @@ func (s *DynamoDBStore) AddSubscribers(subscribers []*common.Subscriber) error {
 	return nil
 }
 
-func (s *DynamoDBStore) ConfirmSubscriber(newsletter, email string) error {
+func (s *SubscribersDynamoDB) ConfirmSubscriber(newsletter, email string) error {
 	updateVal := struct {
 		ConfirmedAt common.JSONTime `json:":confirmed_at"`
 	}{

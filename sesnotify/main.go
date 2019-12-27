@@ -11,10 +11,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/ribtoks/listing/pkg/common"
+	"github.com/ribtoks/listing/pkg/db"
 )
 
 var (
-	store *DynamoDBStore
+	store common.NotificationsStore
 )
 
 func handler(ctx context.Context, snsEvent events.SNSEvent) {
@@ -68,7 +69,7 @@ func main() {
 		log.Fatalf("Failed to create AWS session. err=%v", err)
 	}
 
-	store = NewStore(tableName, sess)
+	store = db.NewNotificationsStore(tableName, sess)
 
 	lambda.Start(handler)
 }

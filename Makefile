@@ -5,8 +5,8 @@ test:
 
 build:
 	dep ensure -v
-	env GOOS=linux go build -ldflags="-s -w" -o bin/listing listing/main.go listing/store.go listing/token.go listing/api.go listing/email.go listing/confirm_html.go listing/jsontime.go listing/subscriber.go
-	env GOOS=linux go build -ldflags="-s -w" -o bin/sesnotify sesnotify/main.go sesnotify/sesmessage.go sesnotify/store.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/listing listing/main.go listing/api.go listing/email.go listing/confirm_html.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/sesnotify sesnotify/main.go
 
 clean:
 	rm -rf ./bin ./vendor ./.serverless Gopkg.lock

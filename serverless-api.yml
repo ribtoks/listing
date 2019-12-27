@@ -10,9 +10,6 @@ provider:
     throttle:
       burstLimit: 10
       rateLimit: 2
-  environment:
-    SUPPORTED_NEWSLETTERS: ${self:custom.secrets.supportedNewsletters}
-    SUBSCRIBERS_TABLE: ${self:custom.subscribersTableName}
 
 plugins:
   - serverless-iam-roles-per-function
@@ -51,6 +48,10 @@ functions:
           path: subscribers
           method: PUT
           cors: true
+      - http:
+          path: complaints
+          method: GET
+          cors: true
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -69,6 +70,14 @@ functions:
           - "ses:SendEmail"
           - "ses:SendRawEmail"
         Resource: "arn:aws:ses:${self:provider.region}:*:identity/*"
+      - Effect: Allow
+        Action:
+          - "dynamodb:DescribeTable"
+          - "dynamodb:Query"
+          - "dynamodb:Scan"
+          - "dynamodb:GetItem"
+        Resource:
+          - { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTableArn' }
     environment:
       CONFIRM_URL: ${self:custom.secrets.confirmUrl}
       EMAIL_FROM: ${self:custom.secrets.emailFrom}
@@ -77,6 +86,9 @@ functions:
       CONFIRM_REDIRECT_URL: ${self:custom.secrets.confirmRedirectUrl}
       UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
       API_TOKEN: ${self:custom.secrets.apiToken}
+      SUBSCRIBERS_TABLE: ${self:custom.subscribersTableName}
+      NOTIFICATIONS_TABLE: ${self:custom.snsTableName}
+      SUPPORTED_NEWSLETTERS: ${self:custom.secrets.supportedNewsletters}
   # lambda used to handle bounce and complaint notifications from SES
   sesnotify:
     handler: bin/sesnotify

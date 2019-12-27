@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
+	"github.com/ribtoks/listing/pkg/db"
 )
 
 var (
@@ -48,7 +49,8 @@ func main() {
 	unsubscribeRedirectUrl := os.Getenv("UNSUBSCRIBE_REDIRECT_URL")
 	confirmRedirectUrl := os.Getenv("CONFIRM_REDIRECT_URL")
 	confirmUrl := os.Getenv("CONFIRM_URL")
-	tableName := os.Getenv("SUBSCRIBERS_TABLE")
+	subscribersTableName := os.Getenv("SUBSCRIBERS_TABLE")
+	notificationsTableName := os.Getenv("NOTIFICATIONS_TABLE")
 	supportedNewsletters := os.Getenv("SUPPORTED_NEWSLETTERS")
 	emailFrom := os.Getenv("EMAIL_FROM")
 
@@ -60,7 +62,8 @@ func main() {
 		log.Fatalf("Failed to create AWS session. err=%v", err)
 	}
 
-	store := NewStore(tableName, sess)
+	subscribers := db.NewSubscribersStore(subscribersTableName, sess)
+	notifications := db.NewNotificationsStore(notificationsTableName, sess)
 	mailer := &SESMailer{
 		svc:    ses.New(sess),
 		sender: emailFrom,
@@ -75,7 +78,8 @@ func main() {
 		unsubscribeRedirectURL: unsubscribeRedirectUrl,
 		confirmRedirectURL:     confirmRedirectUrl,
 		confirmURL:             confirmUrl,
-		store:                  store,
+		subscribers:            subscribers,
+		notifications:          notifications,
 		mailer:                 mailer,
 		newsletters:            make(map[string]bool),
 	}

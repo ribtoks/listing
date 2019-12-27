@@ -20,7 +20,8 @@ type NewsletterResource struct {
 	confirmRedirectURL     string
 	confirmURL             string
 	newsletters            map[string]bool
-	store                  common.SubscribersStore
+	subscribers            common.SubscribersStore
+	notifications          common.NotificationsStore
 	mailer                 common.Mailer
 }
 
@@ -35,7 +36,8 @@ const (
 )
 
 func (nr *NewsletterResource) setup(router *http.ServeMux) {
-	router.HandleFunc("/subscribers", nr.auth(nr.subscribers))
+	router.HandleFunc("/subscribers", nr.auth(nr.serveSubscribers))
+	router.HandleFunc("/complaints", nr.auth(nr.complaints))
 	router.HandleFunc("/subscribe", nr.method("POST", nr.subscribe))
 	router.HandleFunc("/unsubscribe", nr.method("GET", nr.unsubscribe))
 	router.HandleFunc("/confirm", nr.method("GET", nr.confirm))
@@ -91,7 +93,7 @@ func (nr *NewsletterResource) getSubscribers(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	emails, err := nr.store.GetSubscribers(newsletter)
+	emails, err := nr.subscribers.Subscribers(newsletter)
 	if err != nil {
 		log.Printf("Failed to fetch subscribers. err=%v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -139,7 +141,7 @@ func (nr *NewsletterResource) putSubscribers(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	err = nr.store.AddSubscribers(ss)
+	err = nr.subscribers.AddSubscribers(ss)
 	if err != nil {
 		log.Printf("Failed to import subscribers. err=%v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -149,7 +151,7 @@ func (nr *NewsletterResource) putSubscribers(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 }
 
-func (nr *NewsletterResource) subscribers(w http.ResponseWriter, r *http.Request) {
+func (nr *NewsletterResource) serveSubscribers(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		{
@@ -195,7 +197,7 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 	// name is optional
 	name := strings.TrimSpace(r.FormValue("name"))
 
-	err = nr.store.AddSubscriber(newsletter, email, name)
+	err = nr.subscribers.AddSubscriber(newsletter, email, name)
 	if err != nil {
 		log.Printf("Failed to add subscription. email=%q newsletter=%q name=%v err=%v", email, newsletter, name, err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -237,7 +239,7 @@ func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err := nr.store.RemoveSubscriber(newsletter, email)
+	err := nr.subscribers.RemoveSubscriber(newsletter, email)
 	if err != nil {
 		log.Printf("Failed to unsubscribe. email=%q err=%v", email, err)
 		http.Error(w, "Error unsubscribing from newsletter", http.StatusInternalServerError)
@@ -270,7 +272,7 @@ func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := nr.store.ConfirmSubscriber(newsletter, email)
+	err := nr.subscribers.ConfirmSubscriber(newsletter, email)
 	if err != nil {
 		log.Printf("Failed to confirm subscription. email=%q err=%v", email, err)
 		http.Error(w, "Error confirming subscription", http.StatusInternalServerError)
@@ -280,4 +282,18 @@ func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Confirmed subscription. email=%q newsletter=%q", email, newsletter)
 	w.Header().Set("Location", nr.confirmRedirectURL)
 	http.Redirect(w, r, nr.confirmRedirectURL, http.StatusFound)
+}
+
+func (nr *NewsletterResource) complaints(w http.ResponseWriter, r *http.Request) {
+	notifications, err := nr.notifications.Notifications()
+	if err != nil {
+		log.Printf("Failed to fetch notifications. err=%v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(notifications)
+
 }

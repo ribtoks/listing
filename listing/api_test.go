@@ -12,13 +12,16 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ribtoks/listing/pkg/common"
+	"github.com/ribtoks/listing/pkg/db"
 )
 
 const (
 	subscribeEndpoint   = "/subscribe"
 	subscribersEndpoint = "/subscribers"
+	complaintsEndpoint  = "/complaints"
 	unsubscribeEndpoint = "/unsubscribe"
 	confirmEndpoint     = "/confirm"
 	secret              = "secret123"
@@ -28,28 +31,30 @@ const (
 	testNewsletter      = "testnewsletter"
 )
 
+var incorrectTime = common.JSONTime(time.Unix(1, 1))
+
 type DevNullMailer struct{}
 
 func (m *DevNullMailer) SendConfirmation(newsletter, email, name, confirmUrl string) error {
 	return nil
 }
 
-type MapStore struct {
+type SubscribersMapStore struct {
 	items map[string]*common.Subscriber
 }
 
-var _ common.SubscribersStore = (*MapStore)(nil)
+var _ common.SubscribersStore = (*SubscribersMapStore)(nil)
 
-func (s *MapStore) key(newsletter, email string) string {
+func (s *SubscribersMapStore) key(newsletter, email string) string {
 	return newsletter + email
 }
 
-func (s *MapStore) contains(newsletter, email string) bool {
+func (s *SubscribersMapStore) contains(newsletter, email string) bool {
 	_, ok := s.items[s.key(newsletter, email)]
 	return ok
 }
 
-func (s *MapStore) AddSubscriber(newsletter, email, name string) error {
+func (s *SubscribersMapStore) AddSubscriber(newsletter, email, name string) error {
 	key := s.key(newsletter, email)
 	if _, ok := s.items[key]; ok {
 		return errors.New("Subscriber already exists")
@@ -65,7 +70,7 @@ func (s *MapStore) AddSubscriber(newsletter, email, name string) error {
 	return nil
 }
 
-func (s *MapStore) RemoveSubscriber(newsletter, email string) error {
+func (s *SubscribersMapStore) RemoveSubscriber(newsletter, email string) error {
 	key := s.key(newsletter, email)
 	if i, ok := s.items[key]; ok {
 		i.UnsubscribedAt = common.JsonTimeNow()
@@ -74,7 +79,7 @@ func (s *MapStore) RemoveSubscriber(newsletter, email string) error {
 	return errors.New("Subscriber does not exist")
 }
 
-func (s *MapStore) GetSubscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
+func (s *SubscribersMapStore) Subscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
 	for key, value := range s.items {
 		if strings.HasPrefix(key, newsletter) {
 			subscribers = append(subscribers, value)
@@ -83,14 +88,14 @@ func (s *MapStore) GetSubscribers(newsletter string) (subscribers []*common.Subs
 	return subscribers, nil
 }
 
-func (s *MapStore) AddSubscribers(subscribers []*common.Subscriber) error {
+func (s *SubscribersMapStore) AddSubscribers(subscribers []*common.Subscriber) error {
 	for _, i := range subscribers {
 		s.items[s.key(i.Newsletter, i.Email)] = i
 	}
 	return nil
 }
 
-func (s *MapStore) ConfirmSubscriber(newsletter, email string) error {
+func (s *SubscribersMapStore) ConfirmSubscriber(newsletter, email string) error {
 	key := s.key(newsletter, email)
 	if i, ok := s.items[key]; ok {
 		i.ConfirmedAt = common.JsonTimeNow()
@@ -99,26 +104,67 @@ func (s *MapStore) ConfirmSubscriber(newsletter, email string) error {
 	return errors.New("Subscriber does not exist")
 }
 
-func NewTestResource(router *http.ServeMux, store common.SubscribersStore) *NewsletterResource {
+type NotificationsMapStore struct {
+	items []*common.SesNotification
+}
+
+var _ common.NotificationsStore = (*NotificationsMapStore)(nil)
+
+func (s *NotificationsMapStore) AddBounce(email, from string, isTransient bool) error {
+	t := db.SoftBounceType
+	if !isTransient {
+		t = db.HardBounceType
+	}
+	s.items = append(s.items, &common.SesNotification{
+		Email:        email,
+		ReceivedAt:   common.JsonTimeNow(),
+		Notification: t,
+		From:         from,
+	})
+	return nil
+}
+
+func (s *NotificationsMapStore) AddComplaint(email, from string) error {
+	s.items = append(s.items, &common.SesNotification{
+		Email:        email,
+		ReceivedAt:   common.JsonTimeNow(),
+		Notification: db.ComplaintType,
+		From:         from,
+	})
+	return nil
+}
+
+func (s *NotificationsMapStore) Notifications() (notifications []*common.SesNotification, err error) {
+	return s.items, nil
+}
+
+func NewTestResource(router *http.ServeMux, subscribers common.SubscribersStore, notifications common.NotificationsStore) *NewsletterResource {
 	newsletters := &NewsletterResource{
-		store:       store,
-		secret:      secret,
-		apiToken:    apiToken,
-		newsletters: make(map[string]bool),
-		mailer:      &DevNullMailer{},
+		subscribers:   subscribers,
+		notifications: notifications,
+		secret:        secret,
+		apiToken:      apiToken,
+		newsletters:   make(map[string]bool),
+		mailer:        &DevNullMailer{},
 	}
 	return newsletters
 }
 
-func NewTestStore() *MapStore {
-	return &MapStore{
+func NewSubscribersStore() *SubscribersMapStore {
+	return &SubscribersMapStore{
 		items: make(map[string]*common.Subscriber),
+	}
+}
+
+func NewNotificationsStore() *NotificationsMapStore {
+	return &NotificationsMapStore{
+		items: make([]*common.SesNotification, 0),
 	}
 }
 
 func TestGetSubscribeMethodIsNotSupported(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", subscribeEndpoint, nil)
@@ -138,7 +184,7 @@ func TestGetSubscribeMethodIsNotSupported(t *testing.T) {
 
 func TestSubscribeWithoutParams(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("POST", subscribeEndpoint, nil)
@@ -158,7 +204,7 @@ func TestSubscribeWithoutParams(t *testing.T) {
 
 func TestSubscribeWithBadEmail(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	data := url.Values{}
@@ -185,8 +231,8 @@ func TestSubscribeWithBadEmail(t *testing.T) {
 func TestSubscribe(t *testing.T) {
 	srv := http.NewServeMux()
 	newsletter := "foo"
-	store := NewTestStore()
-	nr := NewTestResource(srv, store)
+	store := NewSubscribersStore()
+	nr := NewTestResource(srv, store, NewNotificationsStore())
 	nr.addNewsletters([]string{newsletter})
 	nr.setup(srv)
 
@@ -218,10 +264,10 @@ func TestSubscribe(t *testing.T) {
 func TestConfirmSubscribe(t *testing.T) {
 	srv := http.NewServeMux()
 
-	store := NewTestStore()
+	store := NewSubscribersStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(srv, store)
+	nr := NewTestResource(srv, store, NewNotificationsStore())
 	nr.addNewsletters([]string{testNewsletter})
 	nr.setup(srv)
 
@@ -257,7 +303,7 @@ func TestConfirmSubscribe(t *testing.T) {
 
 func TestGetSubscribersUnauthorized(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
@@ -277,7 +323,7 @@ func TestGetSubscribersUnauthorized(t *testing.T) {
 
 func TestGetSubscribersWithWrongPassword(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
@@ -298,7 +344,7 @@ func TestGetSubscribersWithWrongPassword(t *testing.T) {
 
 func TestGetSubscribersWithoutParam(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
@@ -319,7 +365,7 @@ func TestGetSubscribersWithoutParam(t *testing.T) {
 
 func TestGetSubscribersWrongNewsletter(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
@@ -345,10 +391,10 @@ func TestGetSubscribersWrongNewsletter(t *testing.T) {
 func TestGetSubscribersOK(t *testing.T) {
 	srv := http.NewServeMux()
 
-	store := NewTestStore()
+	store := NewSubscribersStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(srv, store)
+	nr := NewTestResource(srv, store, NewNotificationsStore())
 	nr.setup(srv)
 	nr.addNewsletters([]string{testNewsletter})
 
@@ -393,7 +439,7 @@ func TestGetSubscribersOK(t *testing.T) {
 
 func TestUnsubscribeWrongMethod(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("POST", unsubscribeEndpoint, nil)
@@ -413,7 +459,7 @@ func TestUnsubscribeWrongMethod(t *testing.T) {
 
 func TestUnsubscribeWithoutNewsletter(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
@@ -434,10 +480,10 @@ func TestUnsubscribeWithoutNewsletter(t *testing.T) {
 func TestUnsubscribeWithoutToken(t *testing.T) {
 	srv := http.NewServeMux()
 
-	store := NewTestStore()
+	store := NewSubscribersStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(srv, store)
+	nr := NewTestResource(srv, store, NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
@@ -466,10 +512,10 @@ func TestUnsubscribeWithoutToken(t *testing.T) {
 func TestUnsubscribeWithBadToken(t *testing.T) {
 	srv := http.NewServeMux()
 
-	store := NewTestStore()
+	store := NewSubscribersStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(srv, store)
+	nr := NewTestResource(srv, store, NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
@@ -499,10 +545,10 @@ func TestUnsubscribeWithBadToken(t *testing.T) {
 func TestUnsubscribe(t *testing.T) {
 	srv := http.NewServeMux()
 
-	store := NewTestStore()
+	store := NewSubscribersStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(srv, store)
+	nr := NewTestResource(srv, store, NewNotificationsStore())
 	nr.addNewsletters([]string{testNewsletter})
 	nr.setup(srv)
 
@@ -536,7 +582,7 @@ func TestUnsubscribe(t *testing.T) {
 
 func TestPutSubscribersUnauthorized(t *testing.T) {
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	req, err := http.NewRequest("PUT", subscribersEndpoint, nil)
@@ -558,7 +604,7 @@ func TestPutSubscribersWrongNewsletter(t *testing.T) {
 	newsletter := "TestNewsletter"
 
 	srv := http.NewServeMux()
-	nr := NewTestResource(srv, NewTestStore())
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
 	var subscribers []*common.Subscriber
@@ -598,8 +644,8 @@ func TestPutSubscribers(t *testing.T) {
 	newsletter := "TestNewsletter"
 
 	srv := http.NewServeMux()
-	store := NewTestStore()
-	nr := NewTestResource(srv, store)
+	store := NewSubscribersStore()
+	nr := NewTestResource(srv, store, NewNotificationsStore())
 	nr.setup(srv)
 	nr.addNewsletters([]string{newsletter})
 
@@ -641,5 +687,64 @@ func TestPutSubscribers(t *testing.T) {
 		if !store.contains(newsletter, k) {
 			t.Errorf("Email not imported: %v", k)
 		}
+	}
+}
+
+func TestGetComplaintsUnauthorized(t *testing.T) {
+	srv := http.NewServeMux()
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
+	nr.setup(srv)
+
+	req, err := http.NewRequest("GET", complaintsEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
+func TestGetComplaintsOK(t *testing.T) {
+	srv := http.NewServeMux()
+	store := NewNotificationsStore()
+	store.AddBounce(testEmail, "from@email.com", false /*is transient*/)
+	store.AddComplaint(testEmail, "from@email.com")
+	nr := NewTestResource(srv, NewSubscribersStore(), store)
+	nr.setup(srv)
+
+	req, err := http.NewRequest("GET", complaintsEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.SetBasicAuth("any username", apiToken)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ss := make([]*common.SesNotification, 0)
+	err = json.Unmarshal(body, &ss)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(ss) != 2 {
+		t.Errorf("Wrong number of items in response: %v", len(ss))
 	}
 }
