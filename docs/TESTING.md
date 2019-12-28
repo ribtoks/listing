@@ -8,6 +8,10 @@ Run previous "subscription" command to the real email address and click "Confirm
 
 ## Listing all subscribers
 
+`./listing-cli -auth-token your-token-here -url "https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev" -mode export -newsletter Listing1`
+
+OR
+
 `curl -v -u :your-api-token https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev/subscribers?newsletter=NewsletterName`
 
 ## Importing subscribers
