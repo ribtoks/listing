@@ -81,6 +81,22 @@
   revision = "c2b33e84"
 
 [[projects]]
+  digest = "1:d93779dc5d7750c2afd77c2e162c728dacfacce1c32af63fd03f23b7376ea30f"
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  pruneopts = ""
+  revision = "18c3d09a134a52720932bbaa92c798a0ab111004"
+  version = "v0.0.7"
+
+[[projects]]
+  digest = "1:be76fb5b006046835859bbfd38adfc01574c672685fd5d4c6f0bce073ac16bfb"
+  name = "github.com/olekukonko/tablewriter"
+  packages = ["."]
+  pruneopts = ""
+  revision = "876dd0e0227ec99c0243b639b92139915b65331a"
+  version = "v0.0.4"
+
+[[projects]]
   digest = "1:ef0f9731bc6c3c59396adc50f36da36ca98c704812c449794f9326f7bc64b5f1"
   name = "github.com/ribtoks/backoff"
   packages = ["."]
@@ -110,6 +126,7 @@
     "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface",
     "github.com/aws/aws-sdk-go/service/ses",
     "github.com/awslabs/aws-lambda-go-api-proxy/httpadapter",
+    "github.com/olekukonko/tablewriter",
     "github.com/ribtoks/backoff",
     "github.com/ribtoks/checkmail",
   ]

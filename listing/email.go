@@ -54,8 +54,8 @@ func (sm *SESMailer) confirmURL(newsletter, email string, confirmBaseURL string)
 		return "", err
 	}
 	params := url.Values{}
-	params.Add(paramNewsletter, newsletter)
-	params.Add(paramToken, token)
+	params.Add(common.ParamNewsletter, newsletter)
+	params.Add(common.ParamToken, token)
 	baseUrl.RawQuery = params.Encode()
 	return baseUrl.String(), nil
 }

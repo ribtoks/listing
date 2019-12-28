@@ -211,8 +211,8 @@ func TestSubscribeWithBadEmail(t *testing.T) {
 	nr.setup(srv)
 
 	data := url.Values{}
-	data.Set("newsletter", "foo")
-	data.Set("email", "bar")
+	data.Set(common.ParamNewsletter, "foo")
+	data.Set(common.ParamEmail, "bar")
 
 	req, err := http.NewRequest("POST", common.SubscribeEndpoint, strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -240,8 +240,8 @@ func TestSubscribe(t *testing.T) {
 	nr.setup(srv)
 
 	data := url.Values{}
-	data.Set("newsletter", newsletter)
-	data.Set("email", "bar@foo.com")
+	data.Set(common.ParamNewsletter, newsletter)
+	data.Set(common.ParamEmail, "bar@foo.com")
 
 	req, err := http.NewRequest("POST", common.SubscribeEndpoint, strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -275,8 +275,8 @@ func TestConfirmSubscribe(t *testing.T) {
 	nr.setup(srv)
 
 	data := url.Values{}
-	data.Set("newsletter", testNewsletter)
-	data.Set("token", common.Sign(secret, testEmail))
+	data.Set(common.ParamNewsletter, testNewsletter)
+	data.Set(common.ParamToken, common.Sign(secret, testEmail))
 
 	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
 	if err != nil {
@@ -284,8 +284,8 @@ func TestConfirmSubscribe(t *testing.T) {
 	}
 
 	q := req.URL.Query()
-	q.Add("newsletter", testNewsletter)
-	q.Add("token", common.Sign(secret, testEmail))
+	q.Add(common.ParamNewsletter, testNewsletter)
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
 	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()
@@ -376,7 +376,7 @@ func TestGetSubscribersWrongNewsletter(t *testing.T) {
 		t.Fatal(err)
 	}
 	q := req.URL.Query()
-	q.Add("newsletter", "test")
+	q.Add(common.ParamNewsletter, "test")
 	req.URL.RawQuery = q.Encode()
 	req.SetBasicAuth("any username", apiToken)
 
@@ -406,7 +406,7 @@ func TestGetSubscribersOK(t *testing.T) {
 		t.Fatal(err)
 	}
 	q := req.URL.Query()
-	q.Add("newsletter", testNewsletter)
+	q.Add(common.ParamNewsletter, testNewsletter)
 	req.URL.RawQuery = q.Encode()
 
 	req.SetBasicAuth("any username", apiToken)
@@ -495,7 +495,7 @@ func TestUnsubscribeWithoutToken(t *testing.T) {
 	}
 
 	q := req.URL.Query()
-	q.Add("newsletter", "random value")
+	q.Add(common.ParamNewsletter, "random value")
 	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()
@@ -527,8 +527,8 @@ func TestUnsubscribeWithBadToken(t *testing.T) {
 	}
 
 	q := req.URL.Query()
-	q.Add("newsletter", "random value")
-	q.Add("token", "abcde")
+	q.Add(common.ParamNewsletter, "random value")
+	q.Add(common.ParamToken, "abcde")
 	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()
@@ -560,8 +560,8 @@ func TestUnsubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 	q := req.URL.Query()
-	q.Add("newsletter", testNewsletter)
-	q.Add("token", common.Sign(secret, testEmail))
+	q.Add(common.ParamNewsletter, testNewsletter)
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
 	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()

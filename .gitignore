@@ -22,3 +22,4 @@ secrets.json
 *.swo
 
 bin/
+listing-cli/listing-cli

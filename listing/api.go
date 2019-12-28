@@ -26,8 +26,6 @@ type NewsletterResource struct {
 }
 
 const (
-	paramNewsletter = "newsletter"
-	paramToken      = "token"
 	// assume there cannot be such a huge http requests for subscription
 	kilobyte             = 1024
 	megabyte             = 1024 * kilobyte
@@ -87,7 +85,7 @@ func (nr *NewsletterResource) isValidNewsletter(n string) bool {
 }
 
 func (nr *NewsletterResource) getSubscribers(w http.ResponseWriter, r *http.Request) {
-	newsletter := r.URL.Query().Get(paramNewsletter)
+	newsletter := r.URL.Query().Get(common.ParamNewsletter)
 
 	if !nr.isValidNewsletter(newsletter) {
 		http.Error(w, "The newsletter parameter is invalid", http.StatusBadRequest)
@@ -215,7 +213,7 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	newsletter := r.FormValue(paramNewsletter)
+	newsletter := r.FormValue(common.ParamNewsletter)
 	email := r.FormValue("email")
 
 	err = checkmail.ValidateFormat(email)
@@ -251,8 +249,8 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 
 // unsubscribe route.
 func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request) {
-	newsletter := r.URL.Query().Get(paramNewsletter)
-	unsubscribeToken := r.URL.Query().Get(paramToken)
+	newsletter := r.URL.Query().Get(common.ParamNewsletter)
+	unsubscribeToken := r.URL.Query().Get(common.ParamToken)
 
 	if newsletter == "" {
 		http.Error(w, "The newsletter query-string parameter is required", http.StatusBadRequest)
@@ -289,8 +287,8 @@ func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request
 }
 
 func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
-	newsletter := r.URL.Query().Get(paramNewsletter)
-	subscribeToken := r.URL.Query().Get(paramToken)
+	newsletter := r.URL.Query().Get(common.ParamNewsletter)
+	subscribeToken := r.URL.Query().Get(common.ParamToken)
 
 	if !nr.isValidNewsletter(newsletter) {
 		http.Error(w, "Invalid newsletter param", http.StatusBadRequest)

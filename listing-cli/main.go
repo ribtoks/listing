@@ -13,7 +13,10 @@ var (
 	modeFlag       = flag.String("mode", "", "Execution mode: subscribe|unsubscribe|export|import|delete")
 	urlFlag        = flag.String("url", "", "Base URL to the listing API")
 	emailFlag      = flag.String("email", "", "Email for subscribe|unsubscribe")
+	authTokenFlag  = flag.String("auth-token", "", "Auth token for admin access")
+	secretFlag     = flag.String("secret", "", "Secret for email salt")
 	newsletterFlag = flag.String("newsletter", "", "Newsletter for subscribe|unsubscribe")
+	formatFlag     = flag.String("format", "table", "Ouput format of subscribers: csv|tsv|table")
 	nameFlag       = flag.String("name", "", "(optional) Name for subscribe")
 	logPathFlag    = flag.String("l", "listing-cli.log", "Absolute path to log file")
 	stdoutFlag     = flag.Bool("stdout", false, "Log to stdout and to logfile")
@@ -21,11 +24,16 @@ var (
 )
 
 const (
-	appName = "listing-cli"
+	appName         = "listing-cli"
+	modeSubscribe   = "subscribe"
+	modeUnsubscribe = "unsubscribe"
+	modeExport      = "export"
+	modeImport      = "import"
+	modeDelete      = "delete"
 )
 
 var (
-	supportedModes = [...]string{"subscribe", "unsubscribe", "export", "import", "delete"}
+	supportedModes = [...]string{modeSubscribe, modeUnsubscribe, modeExport, modeImport, modeDelete}
 )
 
 func main() {
@@ -38,6 +46,22 @@ func main() {
 	logfile, err := setupLogging()
 	if err != nil {
 		defer logfile.Close()
+	}
+
+	client := &listingClient{
+		printer:   NewPrinter(),
+		url:       *urlFlag,
+		authToken: *authTokenFlag,
+		secret:    *secretFlag,
+	}
+
+	switch *modeFlag {
+	case modeExport:
+		{
+			client.export(*newsletterFlag)
+		}
+	default:
+		fmt.Printf("Mode %v is not supported yet", *modeFlag)
 	}
 }
 
@@ -80,4 +104,17 @@ func parseFlags() error {
 	}
 
 	return nil
+}
+
+func NewPrinter() Printer {
+	switch *formatFlag {
+	case "table":
+		return NewTablePrinter()
+	case "csv":
+		return NewCSVPrinter()
+	case "tsv":
+		return NewTSVPrinter()
+	default:
+		return NewTablePrinter()
+	}
 }

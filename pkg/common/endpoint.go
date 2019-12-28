@@ -6,4 +6,7 @@ const (
 	UnsubscribeEndpoint = "/unsubscribe"
 	ComplaintsEndpoint  = "/complaints"
 	ConfirmEndpoint     = "/confirm"
+	ParamNewsletter     = "newsletter"
+	ParamToken          = "token"
+	ParamEmail          = "email"
 )
