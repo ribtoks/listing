@@ -121,7 +121,7 @@ func NewPrinter() Printer {
 		return NewCSVPrinter()
 	case "tsv":
 		return NewTSVPrinter()
-	case "raw":
+	case "json":
 		return NewRawPrinter()
 	default:
 		return NewTablePrinter()
