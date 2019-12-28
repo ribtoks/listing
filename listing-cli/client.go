@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -8,13 +9,14 @@ import (
 )
 
 type listingClient struct {
+	client    *http.Client
 	printer   Printer
 	url       string
 	authToken string
 	secret    string
 }
 
-func (c *listingClient) subscribersQuery(newsletter string) (string, error) {
+func (c *listingClient) subscribersURL(newsletter string) (string, error) {
 	baseURL := c.url
 	if !strings.HasSuffix(baseURL, "/") {
 		baseURL = baseURL + "/"

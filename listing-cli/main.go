@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
+	"time"
 )
 
 var (
@@ -49,6 +51,7 @@ func main() {
 	}
 
 	client := &listingClient{
+		client:    &http.Client{Timeout: 10 * time.Second},
 		printer:   NewPrinter(),
 		url:       *urlFlag,
 		authToken: *authTokenFlag,
@@ -58,10 +61,14 @@ func main() {
 	switch *modeFlag {
 	case modeExport:
 		{
-			client.export(*newsletterFlag)
+			err = client.export(*newsletterFlag)
 		}
 	default:
 		fmt.Printf("Mode %v is not supported yet", *modeFlag)
+	}
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		os.Exit(1)
 	}
 }
 
