@@ -36,6 +36,8 @@ func structToMap(cs *common.Subscriber) map[string]string {
 			v = string(f.Bytes())
 		case string:
 			v = f.String()
+		case common.JSONTime:
+			v = f.Interface().(common.JSONTime).String()
 		}
 		values[typeOfT.Field(i).Name] = v
 	}
