@@ -36,11 +36,11 @@ const (
 )
 
 func (nr *NewsletterResource) setup(router *http.ServeMux) {
-	router.HandleFunc("/subscribers", nr.auth(nr.serveSubscribers))
-	router.HandleFunc("/complaints", nr.auth(nr.complaints))
-	router.HandleFunc("/subscribe", nr.method("POST", nr.subscribe))
-	router.HandleFunc("/unsubscribe", nr.method("GET", nr.unsubscribe))
-	router.HandleFunc("/confirm", nr.method("GET", nr.confirm))
+	router.HandleFunc(common.SubscribersEndpoint, nr.auth(nr.serveSubscribers))
+	router.HandleFunc(common.ComplaintsEndpoint, nr.auth(nr.complaints))
+	router.HandleFunc(common.SubscribeEndpoint, nr.method("POST", nr.subscribe))
+	router.HandleFunc(common.UnsubscribeEndpoint, nr.method("GET", nr.unsubscribe))
+	router.HandleFunc(common.ConfirmEndpoint, nr.method("GET", nr.confirm))
 }
 
 func (nr *NewsletterResource) addNewsletters(n []string) {

@@ -19,16 +19,11 @@ import (
 )
 
 const (
-	subscribeEndpoint   = "/subscribe"
-	subscribersEndpoint = "/subscribers"
-	complaintsEndpoint  = "/complaints"
-	unsubscribeEndpoint = "/unsubscribe"
-	confirmEndpoint     = "/confirm"
-	secret              = "secret123"
-	apiToken            = "qwerty123456"
-	testName            = "Foo Bar"
-	testEmail           = "foo@bar.com"
-	testNewsletter      = "testnewsletter"
+	secret         = "secret123"
+	apiToken       = "qwerty123456"
+	testName       = "Foo Bar"
+	testEmail      = "foo@bar.com"
+	testNewsletter = "testnewsletter"
 )
 
 var incorrectTime = common.JSONTime(time.Unix(1, 1))
@@ -167,7 +162,7 @@ func TestGetSubscribeMethodIsNotSupported(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", subscribeEndpoint, nil)
+	req, err := http.NewRequest("GET", common.SubscribeEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +182,7 @@ func TestSubscribeWithoutParams(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("POST", subscribeEndpoint, nil)
+	req, err := http.NewRequest("POST", common.SubscribeEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +206,7 @@ func TestSubscribeWithBadEmail(t *testing.T) {
 	data.Set("newsletter", "foo")
 	data.Set("email", "bar")
 
-	req, err := http.NewRequest("POST", subscribeEndpoint, strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", common.SubscribeEndpoint, strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	if err != nil {
@@ -240,7 +235,7 @@ func TestSubscribe(t *testing.T) {
 	data.Set("newsletter", newsletter)
 	data.Set("email", "bar@foo.com")
 
-	req, err := http.NewRequest("POST", subscribeEndpoint, strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", common.SubscribeEndpoint, strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	if err != nil {
@@ -275,7 +270,7 @@ func TestConfirmSubscribe(t *testing.T) {
 	data.Set("newsletter", testNewsletter)
 	data.Set("token", common.Sign(secret, testEmail))
 
-	req, err := http.NewRequest("GET", confirmEndpoint, nil)
+	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +301,7 @@ func TestGetSubscribersUnauthorized(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
+	req, err := http.NewRequest("GET", common.SubscribersEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +321,7 @@ func TestGetSubscribersWithWrongPassword(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
+	req, err := http.NewRequest("GET", common.SubscribersEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,7 +342,7 @@ func TestGetSubscribersWithoutParam(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
+	req, err := http.NewRequest("GET", common.SubscribersEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,7 +363,7 @@ func TestGetSubscribersWrongNewsletter(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
+	req, err := http.NewRequest("GET", common.SubscribersEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,7 +393,7 @@ func TestGetSubscribersOK(t *testing.T) {
 	nr.setup(srv)
 	nr.addNewsletters([]string{testNewsletter})
 
-	req, err := http.NewRequest("GET", subscribersEndpoint, nil)
+	req, err := http.NewRequest("GET", common.SubscribersEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,7 +437,7 @@ func TestUnsubscribeWrongMethod(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("POST", unsubscribeEndpoint, nil)
+	req, err := http.NewRequest("POST", common.UnsubscribeEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -462,7 +457,7 @@ func TestUnsubscribeWithoutNewsletter(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
+	req, err := http.NewRequest("GET", common.UnsubscribeEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -486,7 +481,7 @@ func TestUnsubscribeWithoutToken(t *testing.T) {
 	nr := NewTestResource(srv, store, NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
+	req, err := http.NewRequest("GET", common.UnsubscribeEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -518,7 +513,7 @@ func TestUnsubscribeWithBadToken(t *testing.T) {
 	nr := NewTestResource(srv, store, NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
+	req, err := http.NewRequest("GET", common.UnsubscribeEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -552,7 +547,7 @@ func TestUnsubscribe(t *testing.T) {
 	nr.addNewsletters([]string{testNewsletter})
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", unsubscribeEndpoint, nil)
+	req, err := http.NewRequest("GET", common.UnsubscribeEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +580,7 @@ func TestPutSubscribersUnauthorized(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("PUT", subscribersEndpoint, nil)
+	req, err := http.NewRequest("PUT", common.SubscribersEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -622,7 +617,7 @@ func TestPutSubscribersWrongNewsletter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req, err := http.NewRequest("PUT", subscribersEndpoint, bytes.NewBuffer(data))
+	req, err := http.NewRequest("PUT", common.SubscribersEndpoint, bytes.NewBuffer(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -666,7 +661,7 @@ func TestPutSubscribers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req, err := http.NewRequest("PUT", subscribersEndpoint, bytes.NewBuffer(data))
+	req, err := http.NewRequest("PUT", common.SubscribersEndpoint, bytes.NewBuffer(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -695,7 +690,7 @@ func TestGetComplaintsUnauthorized(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", complaintsEndpoint, nil)
+	req, err := http.NewRequest("GET", common.ComplaintsEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -718,7 +713,7 @@ func TestGetComplaintsOK(t *testing.T) {
 	nr := NewTestResource(srv, NewSubscribersStore(), store)
 	nr.setup(srv)
 
-	req, err := http.NewRequest("GET", complaintsEndpoint, nil)
+	req, err := http.NewRequest("GET", common.ComplaintsEndpoint, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
