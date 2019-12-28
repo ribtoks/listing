@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -130,5 +132,29 @@ func (cr *CSVPrinter) Append(s *common.Subscriber) {
 
 func (cr *CSVPrinter) Render() error {
 	cr.w.Flush()
+	return nil
+}
+
+type RawPrinter struct {
+	subscribers []*common.Subscriber
+}
+
+func NewRawPrinter() *RawPrinter {
+	rp := &RawPrinter{
+		subscribers: make([]*common.Subscriber, 0),
+	}
+	return rp
+}
+
+func (rp *RawPrinter) Append(s *common.Subscriber) {
+	rp.subscribers = append(rp.subscribers, s)
+}
+
+func (rp *RawPrinter) Render() error {
+	data, err := json.MarshalIndent(rp.subscribers, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
 	return nil
 }

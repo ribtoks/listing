@@ -16,7 +16,7 @@ var (
 	authTokenFlag  = flag.String("auth-token", "", "Auth token for admin access")
 	secretFlag     = flag.String("secret", "", "Secret for email salt")
 	newsletterFlag = flag.String("newsletter", "", "Newsletter for subscribe|unsubscribe")
-	formatFlag     = flag.String("format", "table", "Ouput format of subscribers: csv|tsv|table")
+	formatFlag     = flag.String("format", "table", "Ouput format of subscribers: csv|tsv|table|json")
 	nameFlag       = flag.String("name", "", "(optional) Name for subscribe")
 	logPathFlag    = flag.String("l", "listing-cli.log", "Absolute path to log file")
 	stdoutFlag     = flag.Bool("stdout", false, "Log to stdout and to logfile")
@@ -114,6 +114,8 @@ func NewPrinter() Printer {
 		return NewCSVPrinter()
 	case "tsv":
 		return NewTSVPrinter()
+	case "raw":
+		return NewRawPrinter()
 	default:
 		return NewTablePrinter()
 	}
