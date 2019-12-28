@@ -12,7 +12,11 @@ Run previous "subscription" command to the real email address and click "Confirm
 
 ## Importing subscribers
 
-`curl -v -u :your-api-token -X PUT https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev/subscribers -H "Content-Type: application/json" --data-binary "@scripts/testsubscribers.json"`
+`curl -v -u :your-api-token -X PUT https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev/subscribers -H "Content-Type: application/json" --data-binary "@scripts/add_subscribers.json"`
+
+## Deleting subscribers
+
+`curl -v -u :your-api-token -X DELETE https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev/subscribers -H "Content-Type: application/json" --data-binary "@scripts/remove_subscribers.json"`
 
 ## Handling bounce and complaint
 
