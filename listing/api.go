@@ -33,6 +33,7 @@ const (
 	megabyte             = 1024 * kilobyte
 	maxSubscribeBodySize = kilobyte / 2
 	maxImportBodySize    = 25 * megabyte
+	maxDeleteBodySize    = 5 * megabyte
 )
 
 func (nr *NewsletterResource) setup(router *http.ServeMux) {
@@ -151,6 +152,38 @@ func (nr *NewsletterResource) putSubscribers(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusOK)
 }
 
+func (nr *NewsletterResource) deleteSubscribers(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Content-Type header is not application/json", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxDeleteBodySize)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+
+	var keys []*common.SubscriberKey
+	err := dec.Decode(&keys)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	if len(keys) == 0 {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	err = nr.subscribers.DeleteSubscribers(keys)
+	if err != nil {
+		log.Printf("Failed to delete subscribers. err=%v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (nr *NewsletterResource) serveSubscribers(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
@@ -160,6 +193,10 @@ func (nr *NewsletterResource) serveSubscribers(w http.ResponseWriter, r *http.Re
 	case "PUT":
 		{
 			nr.putSubscribers(w, r)
+		}
+	case "DELETE":
+		{
+			nr.deleteSubscribers(w, r)
 		}
 	default:
 		{

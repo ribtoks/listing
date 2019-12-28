@@ -81,6 +81,14 @@
   revision = "c2b33e84"
 
 [[projects]]
+  digest = "1:ef0f9731bc6c3c59396adc50f36da36ca98c704812c449794f9326f7bc64b5f1"
+  name = "github.com/ribtoks/backoff"
+  packages = ["."]
+  pruneopts = ""
+  revision = "8eab2debe79d12b7bd3d10653910df25fa9552ba"
+  version = "1.0.0"
+
+[[projects]]
   digest = "1:9f4b6e3942dda8d2136792d1b22b3c289be1109ae12da0c88a1befad438acdfb"
   name = "github.com/ribtoks/checkmail"
   packages = ["."]
@@ -102,6 +110,7 @@
     "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface",
     "github.com/aws/aws-sdk-go/service/ses",
     "github.com/awslabs/aws-lambda-go-api-proxy/httpadapter",
+    "github.com/ribtoks/backoff",
     "github.com/ribtoks/checkmail",
   ]
   solver-name = "gps-cdcl"

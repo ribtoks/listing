@@ -6,6 +6,7 @@ type SubscribersStore interface {
 	RemoveSubscriber(newsletter, email string) error
 	Subscribers(newsletter string) (subscribers []*Subscriber, err error)
 	AddSubscribers(subscribers []*Subscriber) error
+	DeleteSubscribers(keys []*SubscriberKey) error
 	ConfirmSubscriber(newsletter, email string) error
 }
 

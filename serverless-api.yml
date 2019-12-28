@@ -49,6 +49,10 @@ functions:
           method: PUT
           cors: true
       - http:
+          path: subscribers
+          method: DELETE
+          cors: true
+      - http:
           path: complaints
           method: GET
           cors: true

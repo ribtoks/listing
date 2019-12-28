@@ -7,6 +7,7 @@ Endpoint | Method | Parameters | Description
 `/unsubscribe` | GET | `newsletter`, `token` | "Unsubscribe" link in the newsletter emails
 `/subscribers` | GET | `newsletter` | Protected API to retrieve all subscribers for a newsletter
 `/subscribers` | PUT | JSON with Subscribers array | Protected API to import subscribers
+`/subscribers` | DELETE | JSON with Subscriber Keys array | Protected API to delete subscribers
 
 `token` parameter is a salted hash of the email used to uniquely identify every user. It is a security measure to protect from unauthorized unsubscribes/confirmations.
 

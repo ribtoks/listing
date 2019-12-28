@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/ribtoks/backoff"
 	"github.com/ribtoks/listing/pkg/common"
 )
 
@@ -131,8 +132,7 @@ func (s *SubscribersDynamoDB) AddSubscribersChunk(subscribers []*common.Subscrib
 	for _, i := range subscribers {
 		attr, err := dynamodbattribute.MarshalMap(i)
 		if err != nil {
-			log.Printf("Failed to map subcriber. err=%v", err)
-			continue
+			return err
 		}
 
 		requests = append(requests, &dynamodb.WriteRequest{
@@ -142,14 +142,32 @@ func (s *SubscribersDynamoDB) AddSubscribersChunk(subscribers []*common.Subscrib
 		})
 	}
 
-	input := &dynamodb.BatchWriteItemInput{
-		RequestItems: map[string][]*dynamodb.WriteRequest{
-			s.TableName: requests,
-		},
+	b := &backoff.Backoff{
+		Min:    100 * time.Millisecond,
+		Max:    1 * time.Second,
+		Factor: 2,
+		Jitter: false,
 	}
 
-	_, err := s.Client.BatchWriteItem(input)
-	return err
+	for len(requests) > 0 {
+		input := &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]*dynamodb.WriteRequest{
+				s.TableName: requests,
+			},
+		}
+		res, err := s.Client.BatchWriteItem(input)
+		if err != nil {
+			return err
+		}
+		if unprocessed, ok := res.UnprocessedItems[s.TableName]; ok {
+			log.Printf("Found unprocessed items. count=%v", len(unprocessed))
+			requests = unprocessed
+		} else {
+			break
+		}
+		time.Sleep(b.Duration())
+	}
+	return nil
 }
 
 func (s *SubscribersDynamoDB) AddSubscribers(subscribers []*common.Subscriber) error {
@@ -196,4 +214,69 @@ func (s *SubscribersDynamoDB) ConfirmSubscriber(newsletter, email string) error 
 	}
 	_, err = s.Client.UpdateItem(input)
 	return err
+}
+
+func (s *SubscribersDynamoDB) DeleteSubscribersChunk(keys []*common.SubscriberKey) error {
+	// AWS DynamoDB restriction
+	if len(keys) > dynamoDBChunkSize {
+		return errChunkTooBig
+	}
+
+	requests := make([]*dynamodb.WriteRequest, 0, len(keys))
+	for _, k := range keys {
+		attr, err := dynamodbattribute.MarshalMap(k)
+		if err != nil {
+			return err
+		}
+
+		requests = append(requests, &dynamodb.WriteRequest{
+			DeleteRequest: &dynamodb.DeleteRequest{
+				Key: attr,
+			},
+		})
+	}
+
+	b := &backoff.Backoff{
+		Min:    100 * time.Millisecond,
+		Max:    1 * time.Second,
+		Factor: 2,
+		Jitter: false,
+	}
+
+	for len(requests) > 0 {
+		input := &dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]*dynamodb.WriteRequest{
+				s.TableName: requests,
+			},
+		}
+		res, err := s.Client.BatchWriteItem(input)
+		if err != nil {
+			return err
+		}
+		if unprocessed, ok := res.UnprocessedItems[s.TableName]; ok {
+			log.Printf("Found unprocessed items. count=%v", len(unprocessed))
+			requests = unprocessed
+		} else {
+			break
+		}
+		time.Sleep(b.Duration())
+	}
+
+	return nil
+}
+
+func (s *SubscribersDynamoDB) DeleteSubscribers(keys []*common.SubscriberKey) error {
+	for i := 0; i < len(keys); i += dynamoDBChunkSize {
+		end := i + dynamoDBChunkSize
+
+		if end > len(keys) {
+			end = len(keys)
+		}
+
+		err := s.DeleteSubscribersChunk(keys[i:end])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

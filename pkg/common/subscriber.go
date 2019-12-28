@@ -10,3 +10,9 @@ type Subscriber struct {
 	UnsubscribedAt JSONTime `json:"unsubscribed_at"`
 	ConfirmedAt    JSONTime `json:"confirmed_at"`
 }
+
+// SubscriberKey is used for deletion of subscribers
+type SubscriberKey struct {
+	Newsletter string `json:"newsletter"`
+	Email      string `json:"email"`
+}

@@ -74,6 +74,14 @@ func (s *SubscribersMapStore) RemoveSubscriber(newsletter, email string) error {
 	return errors.New("Subscriber does not exist")
 }
 
+func (s *SubscribersMapStore) DeleteSubscribers(keys []*common.SubscriberKey) error {
+	for _, k := range keys {
+		key := s.key(k.Newsletter, k.Email)
+		delete(s.items, key)
+	}
+	return nil
+}
+
 func (s *SubscribersMapStore) Subscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
 	for key, value := range s.items {
 		if strings.HasPrefix(key, newsletter) {
@@ -741,5 +749,74 @@ func TestGetComplaintsOK(t *testing.T) {
 
 	if len(ss) != 2 {
 		t.Errorf("Wrong number of items in response: %v", len(ss))
+	}
+}
+
+func TestDeleteSubscribersUnauthorized(t *testing.T) {
+	srv := http.NewServeMux()
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
+	nr.setup(srv)
+
+	req, err := http.NewRequest("DELETE", common.SubscribersEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
+func TestDeleteSubscribers(t *testing.T) {
+	srv := http.NewServeMux()
+	store := NewSubscribersStore()
+	for i := 0; i < 10; i++ {
+		store.AddSubscriber(testNewsletter, fmt.Sprintf("email%v@email.com", i), testName)
+	}
+
+	nr := NewTestResource(srv, store, NewNotificationsStore())
+	nr.setup(srv)
+
+	keys := []*common.SubscriberKey{
+		&common.SubscriberKey{
+			Newsletter: testNewsletter,
+			Email:      "email1@email.com",
+		},
+		&common.SubscriberKey{
+			Newsletter: testNewsletter,
+			Email:      "email3@email.com",
+		},
+	}
+
+	data, err := json.Marshal(keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("DELETE", common.SubscribersEndpoint, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("any username", apiToken)
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+
+	if len(store.items) != 8 {
+		t.Errorf("Items were not deleted")
 	}
 }
