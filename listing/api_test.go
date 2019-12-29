@@ -484,6 +484,7 @@ func TestConfirmSubscribe(t *testing.T) {
 	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()
+	time.Sleep(10 * time.Nanosecond)
 	srv.ServeHTTP(w, req)
 
 	resp := w.Result()
@@ -814,6 +815,7 @@ func TestUnsubscribe(t *testing.T) {
 	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()
+	time.Sleep(10 * time.Nanosecond)
 	srv.ServeHTTP(w, req)
 
 	resp := w.Result()
@@ -828,7 +830,7 @@ func TestUnsubscribe(t *testing.T) {
 
 	i := store.items[store.key(testNewsletter, testEmail)]
 	if !i.Unsubscribed() {
-		t.Errorf("Unsubscribe time not updated")
+		t.Errorf("Unsubscribe time not updated. created=%v unsubscribe=%v", i.CreatedAt, i.UnsubscribedAt)
 	}
 }
 
