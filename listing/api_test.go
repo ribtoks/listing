@@ -873,6 +873,45 @@ func TestPutSubscribersUnauthorized(t *testing.T) {
 	}
 }
 
+func TestPutSubscribersInvalidMedia(t *testing.T) {
+	newsletter := "TestNewsletter"
+
+	srv := http.NewServeMux()
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
+	nr.setup(srv)
+
+	var subscribers []*common.Subscriber
+	for i := 0; i < 10; i++ {
+		subscribers = append(subscribers, &common.Subscriber{
+			Newsletter:     newsletter,
+			Email:          fmt.Sprintf("foo%v@bar.com", i),
+			CreatedAt:      common.JsonTimeNow(),
+			UnsubscribedAt: incorrectTime,
+			ConfirmedAt:    incorrectTime,
+		})
+	}
+	data, err := json.Marshal(subscribers)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("PUT", common.SubscribersEndpoint, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.SetBasicAuth("any username", apiToken)
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusUnsupportedMediaType {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+}
+
 func TestPutSubscribersWrongNewsletter(t *testing.T) {
 	newsletter := "TestNewsletter"
 
@@ -1101,6 +1140,40 @@ func TestDeleteSubscribersUnauthorized(t *testing.T) {
 
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
+func TestDeleteSubscribersInvalidMedia(t *testing.T) {
+	srv := http.NewServeMux()
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
+	nr.setup(srv)
+
+	keys := []*common.SubscriberKey{
+		&common.SubscriberKey{
+			Newsletter: testNewsletter,
+			Email:      "email1@email.com",
+		},
+	}
+
+	data, err := json.Marshal(keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("DELETE", common.SubscribersEndpoint, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.SetBasicAuth("any username", apiToken)
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusUnsupportedMediaType {
+		t.Errorf("Unexpected status code: %d", resp.StatusCode)
 	}
 }
 

@@ -168,12 +168,6 @@ func (nr *NewsletterResource) deleteSubscribers(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if len(keys) == 0 {
-		log.Println("No keys to delete")
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
 	err = nr.subscribers.DeleteSubscribers(keys)
 	if err != nil {
 		log.Printf("Failed to delete subscribers. err=%v", err)
