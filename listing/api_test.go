@@ -495,7 +495,7 @@ func TestConfirmSubscribe(t *testing.T) {
 
 	i := store.items[store.key(testNewsletter, testEmail)]
 	if !i.Confirmed() {
-		t.Errorf("Confirm time not updated")
+		t.Errorf("Confirm time not updated. created=%v confirm=%v", i.CreatedAt, i.ConfirmedAt)
 	}
 }
 
