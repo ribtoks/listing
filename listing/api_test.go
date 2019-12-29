@@ -832,6 +832,27 @@ func TestUnsubscribe(t *testing.T) {
 	}
 }
 
+func TestPostSubscribers(t *testing.T) {
+	srv := http.NewServeMux()
+	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())
+	nr.setup(srv)
+
+	req, err := http.NewRequest("POST", common.SubscribersEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.SetBasicAuth("any username", apiToken)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
 func TestPutSubscribersUnauthorized(t *testing.T) {
 	srv := http.NewServeMux()
 	nr := NewTestResource(srv, NewSubscribersStore(), NewNotificationsStore())

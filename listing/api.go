@@ -200,6 +200,7 @@ func (nr *NewsletterResource) serveSubscribers(w http.ResponseWriter, r *http.Re
 		}
 	default:
 		{
+			log.Printf("Unsupported method for subscribers. method=%v", r.Method)
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}

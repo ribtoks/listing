@@ -1,7 +1,7 @@
 .PHONY: build clean deploy
 
 test:
-	go test -v -short ./...
+	go test ./...
 
 build:
 	dep ensure -v
