@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/ribtoks/listing.svg?branch=master)](https://travis-ci.org/ribtoks/listing)
 [![Build status](https://ci.appveyor.com/api/projects/status/ypmg5foasuiuf5lh/branch/master?svg=true)](https://ci.appveyor.com/project/Ribtoks/listing/branch/master)
+[![codecov](https://codecov.io/gh/ribtoks/listing/branch/master/graph/badge.svg)](https://codecov.io/gh/ribtoks/listing)
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/ribtoks/listing)](https://goreportcard.com/report/github.com/ribtoks/listing)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/7ca0882c24314f01afe10bb857449ccb)](https://www.codacy.com/manual/ribtoks/listing?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=ribtoks/listing&amp;utm_campaign=Badge_Grade)
 [![Maintainability](https://api.codeclimate.com/v1/badges/084d620cf3ef2f84ce99/maintainability)](https://codeclimate.com/github/ribtoks/listing/maintainability)

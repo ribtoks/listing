@@ -16,4 +16,5 @@ before_script:
 
 script:
   - make build
-  - go test -v -covermode=atomic -coverprofile=coverage.txt ./...
+  - go test -v -covermode=atomic -coverprofile=coverage.out ./...
+  - bash <(curl -s https://codecov.io/bash) || echo 'Codecov failed to upload';
