@@ -163,11 +163,13 @@ func (nr *NewsletterResource) deleteSubscribers(w http.ResponseWriter, r *http.R
 	var keys []*common.SubscriberKey
 	err := dec.Decode(&keys)
 	if err != nil {
+		log.Printf("Failed to decode keys. err=%v", err)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	if len(keys) == 0 {
+		log.Println("No keys to delete")
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}

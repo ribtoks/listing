@@ -278,6 +278,34 @@ func TestSubscribeWithBadEmail(t *testing.T) {
 	}
 }
 
+func TestSubscribeIncorrectNewsletter(t *testing.T) {
+	srv := http.NewServeMux()
+	store := NewSubscribersStore()
+	nr := NewTestResource(srv, store, NewNotificationsStore())
+	nr.addNewsletters([]string{testNewsletter})
+	nr.setup(srv)
+
+	data := url.Values{}
+	data.Set(common.ParamNewsletter, "foo")
+	data.Set(common.ParamEmail, "bar@foo.com")
+
+	req, err := http.NewRequest("POST", common.SubscribeEndpoint, strings.NewReader(data.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
 func TestSubscribe(t *testing.T) {
 	srv := http.NewServeMux()
 	newsletter := "foo"
@@ -404,7 +432,7 @@ func TestConfirmSubscribeWithoutToken(t *testing.T) {
 	}
 }
 
-func TestConfirmSubscribe(t *testing.T) {
+func TestConfirmSubscribeIncorrectNewsletter(t *testing.T) {
 	srv := http.NewServeMux()
 
 	store := NewSubscribersStore()
@@ -414,9 +442,36 @@ func TestConfirmSubscribe(t *testing.T) {
 	nr.addNewsletters([]string{testNewsletter})
 	nr.setup(srv)
 
-	data := url.Values{}
-	data.Set(common.ParamNewsletter, testNewsletter)
-	data.Set(common.ParamToken, common.Sign(secret, testEmail))
+	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, "foo")
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+}
+
+func TestConfirmSubscribe(t *testing.T) {
+	srv := http.NewServeMux()
+
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+
+	nr := NewTestResource(srv, store, NewNotificationsStore())
+	nr.addNewsletters([]string{testNewsletter})
+	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
 	if err != nil {
