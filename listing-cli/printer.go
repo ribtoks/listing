@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/ribtoks/listing/pkg/common"
@@ -40,6 +41,7 @@ func structToMap(cs *common.Subscriber) map[string]string {
 			v = f.String()
 		case common.JSONTime:
 			v = f.Interface().(common.JSONTime).String()
+			v = strings.Trim(v, `"`)
 		}
 		values[typeOfT.Field(i).Name] = v
 	}

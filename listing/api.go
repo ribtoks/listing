@@ -214,11 +214,11 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 	}
 
 	newsletter := r.FormValue(common.ParamNewsletter)
-	email := r.FormValue("email")
+	email := r.FormValue(common.ParamEmail)
 
 	err = checkmail.ValidateFormat(email)
 	if err != nil {
-		log.Printf("Failed to validate email. err=%q", err)
+		log.Printf("Failed to validate email. value=%q err=%q", email, err)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -230,7 +230,7 @@ func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// name is optional
-	name := strings.TrimSpace(r.FormValue("name"))
+	name := strings.TrimSpace(r.FormValue(common.ParamName))
 
 	err = nr.subscribers.AddSubscriber(newsletter, email, name)
 	if err != nil {

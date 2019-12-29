@@ -9,4 +9,5 @@ const (
 	ParamNewsletter     = "newsletter"
 	ParamToken          = "token"
 	ParamEmail          = "email"
+	ParamName           = "name"
 )

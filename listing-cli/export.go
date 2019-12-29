@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/ribtoks/listing/pkg/common"
@@ -10,9 +11,16 @@ import (
 
 var (
 	errInvalidNewsletter = errors.New("Invalid newsletter parameter")
+	emptySubscribers     []*common.Subscriber
 )
 
 func (c *listingClient) fetchSubscribers(url string) ([]*common.Subscriber, error) {
+	log.Printf("About to fetch subscribers. url=%v", url)
+	if c.dryRun {
+		log.Println("Dry run mode. Exiting...")
+		return emptySubscribers, nil
+	}
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -23,6 +31,8 @@ func (c *listingClient) fetchSubscribers(url string) ([]*common.Subscriber, erro
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("Received subscribers response. status=%v", resp.StatusCode)
 
 	defer resp.Body.Close()
 	ss := make([]*common.Subscriber, 0)

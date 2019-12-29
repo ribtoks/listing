@@ -23,6 +23,7 @@ var (
 	logPathFlag    = flag.String("l", "listing-cli.log", "Absolute path to log file")
 	stdoutFlag     = flag.Bool("stdout", false, "Log to stdout and to logfile")
 	helpFlag       = flag.Bool("help", false, "Print help")
+	dryRunFlag     = flag.Bool("dry-run", false, "Simulate selected action")
 )
 
 const (
@@ -51,17 +52,27 @@ func main() {
 	}
 
 	client := &listingClient{
-		client:    &http.Client{Timeout: 10 * time.Second},
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
 		printer:   NewPrinter(),
 		url:       *urlFlag,
 		authToken: *authTokenFlag,
 		secret:    *secretFlag,
+		dryRun:    *dryRunFlag,
 	}
 
 	switch *modeFlag {
 	case modeExport:
 		{
 			err = client.export(*newsletterFlag)
+		}
+	case modeSubscribe:
+		{
+			err = client.subscribe(*emailFlag, *newsletterFlag, *nameFlag)
 		}
 	default:
 		fmt.Printf("Mode %v is not supported yet", *modeFlag)
@@ -79,7 +90,7 @@ func setupLogging() (f *os.File, err error) {
 		return nil, err
 	}
 
-	if *stdoutFlag {
+	if *stdoutFlag || *dryRunFlag {
 		mw := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(mw)
 	} else {
