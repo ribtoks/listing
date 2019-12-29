@@ -27,11 +27,44 @@ const (
 )
 
 var incorrectTime = common.JSONTime(time.Unix(1, 1))
+var errFromFailingStore = errors.New("Error!")
 
 type DevNullMailer struct{}
 
 func (m *DevNullMailer) SendConfirmation(newsletter, email, name, confirmUrl string) error {
 	return nil
+}
+
+type FailingSubscriberStore struct{}
+
+var _ common.SubscribersStore = (*FailingSubscriberStore)(nil)
+
+func (s *FailingSubscriberStore) AddSubscriber(newsletter, email, name string) error {
+	return errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) RemoveSubscriber(newsletter, email string) error {
+	return errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) Subscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
+	return nil, errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) AddSubscribers(subscribers []*common.Subscriber) error {
+	return errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) DeleteSubscribers(keys []*common.SubscriberKey) error {
+	return errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) ConfirmSubscriber(newsletter, email string) error {
+	return errFromFailingStore
+}
+
+func NewFailingStore() *FailingSubscriberStore {
+	return &FailingSubscriberStore{}
 }
 
 type SubscribersMapStore struct {
@@ -264,6 +297,66 @@ func TestSubscribe(t *testing.T) {
 	}
 }
 
+func TestSubscribeFailingStore(t *testing.T) {
+	srv := http.NewServeMux()
+	newsletter := "foo"
+	nr := NewTestResource(srv, NewFailingStore(), NewNotificationsStore())
+	nr.addNewsletters([]string{newsletter})
+	nr.setup(srv)
+
+	data := url.Values{}
+	data.Set(common.ParamNewsletter, newsletter)
+	data.Set(common.ParamEmail, "bar@foo.com")
+
+	req, err := http.NewRequest("POST", common.SubscribeEndpoint, strings.NewReader(data.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
+func TestConfirmSubscribeFailingStore(t *testing.T) {
+	srv := http.NewServeMux()
+
+	nr := NewTestResource(srv, NewFailingStore(), NewNotificationsStore())
+	nr.addNewsletters([]string{testNewsletter})
+	nr.setup(srv)
+
+	data := url.Values{}
+	data.Set(common.ParamNewsletter, testNewsletter)
+	data.Set(common.ParamToken, common.Sign(secret, testEmail))
+
+	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, testNewsletter)
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+}
+
 func TestConfirmSubscribe(t *testing.T) {
 	srv := http.NewServeMux()
 
@@ -386,6 +479,33 @@ func TestGetSubscribersWrongNewsletter(t *testing.T) {
 	resp := w.Result()
 
 	if resp.StatusCode != http.StatusBadRequest {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+}
+
+func TestGetSubscribersFailingStore(t *testing.T) {
+	srv := http.NewServeMux()
+
+	nr := NewTestResource(srv, NewFailingStore(), NewNotificationsStore())
+	nr.setup(srv)
+	nr.addNewsletters([]string{testNewsletter})
+
+	req, err := http.NewRequest("GET", common.SubscribersEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, testNewsletter)
+	req.URL.RawQuery = q.Encode()
+
+	req.SetBasicAuth("any username", apiToken)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
 		body, _ := ioutil.ReadAll(resp.Body)
 		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
 	}
@@ -545,6 +665,32 @@ func TestUnsubscribeWithBadToken(t *testing.T) {
 	}
 }
 
+func TestUnsubscribeFailingStore(t *testing.T) {
+	srv := http.NewServeMux()
+
+	nr := NewTestResource(srv, NewFailingStore(), NewNotificationsStore())
+	nr.addNewsletters([]string{testNewsletter})
+	nr.setup(srv)
+
+	req, err := http.NewRequest("GET", common.UnsubscribeEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, testNewsletter)
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
 func TestUnsubscribe(t *testing.T) {
 	srv := http.NewServeMux()
 
@@ -638,6 +784,47 @@ func TestPutSubscribersWrongNewsletter(t *testing.T) {
 	resp := w.Result()
 
 	if resp.StatusCode != http.StatusBadRequest {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+}
+
+func TestPutSubscribersFailingStore(t *testing.T) {
+	newsletter := "TestNewsletter"
+
+	srv := http.NewServeMux()
+	nr := NewTestResource(srv, NewFailingStore(), NewNotificationsStore())
+	nr.setup(srv)
+	nr.addNewsletters([]string{newsletter})
+
+	var subscribers []*common.Subscriber
+	for i := 0; i < 10; i++ {
+		subscribers = append(subscribers, &common.Subscriber{
+			Newsletter:     newsletter,
+			Email:          fmt.Sprintf("foo%v@bar.com", i),
+			CreatedAt:      common.JsonTimeNow(),
+			UnsubscribedAt: incorrectTime,
+			ConfirmedAt:    incorrectTime,
+		})
+	}
+	data, err := json.Marshal(subscribers)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("PUT", common.SubscribersEndpoint, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("any username", apiToken)
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
 		body, _ := ioutil.ReadAll(resp.Body)
 		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
 	}
@@ -818,5 +1005,46 @@ func TestDeleteSubscribers(t *testing.T) {
 
 	if len(store.items) != 8 {
 		t.Errorf("Items were not deleted")
+	}
+}
+
+func TestDeleteSubscribersFailingStore(t *testing.T) {
+	srv := http.NewServeMux()
+
+	nr := NewTestResource(srv, NewFailingStore(), NewNotificationsStore())
+	nr.setup(srv)
+
+	keys := []*common.SubscriberKey{
+		&common.SubscriberKey{
+			Newsletter: testNewsletter,
+			Email:      "email1@email.com",
+		},
+		&common.SubscriberKey{
+			Newsletter: testNewsletter,
+			Email:      "email3@email.com",
+		},
+	}
+
+	data, err := json.Marshal(keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("DELETE", common.SubscribersEndpoint, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("any username", apiToken)
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
 	}
 }
