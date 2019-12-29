@@ -299,7 +299,7 @@ func TestConfirmSubscribe(t *testing.T) {
 	}
 
 	i := store.items[store.key(testNewsletter, testEmail)]
-	if i.ConfirmedAt.Time().Sub(i.CreatedAt.Time()) < 0 {
+	if !i.Confirmed() {
 		t.Errorf("Confirm time not updated")
 	}
 }
@@ -578,7 +578,7 @@ func TestUnsubscribe(t *testing.T) {
 	}
 
 	i := store.items[store.key(testNewsletter, testEmail)]
-	if i.UnsubscribedAt.Time().Sub(i.CreatedAt.Time()) < 0 {
+	if !i.Unsubscribed() {
 		t.Errorf("Unsubscribe time not updated")
 	}
 }
