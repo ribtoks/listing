@@ -13,14 +13,12 @@ type Subscriber struct {
 
 // Confirmed checks if subscriber has confirmed the email via link
 func (s *Subscriber) Confirmed() bool {
-	d := s.ConfirmedAt.Time().Sub(s.CreatedAt.Time())
-	return d.Nanoseconds() > 0
+	return s.ConfirmedAt.Time().After(s.CreatedAt.Time())
 }
 
 // Unsubscribed checks if subscriber pressed "Unsubscribe" link
 func (s *Subscriber) Unsubscribed() bool {
-	d := s.UnsubscribedAt.Time().Sub(s.CreatedAt.Time())
-	return d.Nanoseconds() > 0
+	return s.UnsubscribedAt.Time().After(s.CreatedAt.Time())
 }
 
 // SubscriberKey is used for deletion of subscribers
