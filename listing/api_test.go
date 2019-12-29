@@ -140,6 +140,20 @@ func (s *SubscribersMapStore) ConfirmSubscriber(newsletter, email string) error 
 	return errors.New("Subscriber does not exist")
 }
 
+type FailingNotificationsStore struct{}
+
+func (s *FailingNotificationsStore) AddBounce(email, from string, isTransient bool) error {
+	return errFromFailingStore
+}
+
+func (s *FailingNotificationsStore) AddComplaint(email, from string) error {
+	return errFromFailingStore
+}
+
+func (s *FailingNotificationsStore) Notifications() (notifications []*common.SesNotification, err error) {
+	return nil, errFromFailingStore
+}
+
 type NotificationsMapStore struct {
 	items []*common.SesNotification
 }
@@ -352,6 +366,39 @@ func TestConfirmSubscribeFailingStore(t *testing.T) {
 	resp := w.Result()
 
 	if resp.StatusCode != http.StatusInternalServerError {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+}
+
+func TestConfirmSubscribeWithoutToken(t *testing.T) {
+	srv := http.NewServeMux()
+
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+
+	nr := NewTestResource(srv, store, NewNotificationsStore())
+	nr.addNewsletters([]string{testNewsletter})
+	nr.setup(srv)
+
+	data := url.Values{}
+	data.Set(common.ParamNewsletter, testNewsletter)
+
+	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, testNewsletter)
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusBadRequest {
 		body, _ := ioutil.ReadAll(resp.Body)
 		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
 	}
@@ -615,7 +662,7 @@ func TestUnsubscribeWithoutToken(t *testing.T) {
 	}
 
 	q := req.URL.Query()
-	q.Add(common.ParamNewsletter, "random value")
+	q.Add(common.ParamNewsletter, testNewsletter)
 	req.URL.RawQuery = q.Encode()
 
 	w := httptest.NewRecorder()
@@ -896,6 +943,27 @@ func TestGetComplaintsUnauthorized(t *testing.T) {
 	resp := w.Result()
 
 	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
+func TestGetComplaintsFailingStore(t *testing.T) {
+	srv := http.NewServeMux()
+	nr := NewTestResource(srv, NewSubscribersStore(), &FailingNotificationsStore{})
+	nr.setup(srv)
+
+	req, err := http.NewRequest("GET", common.ComplaintsEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req.SetBasicAuth("any username", apiToken)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
 		t.Errorf("Unexpected status code %d", resp.StatusCode)
 	}
 }
