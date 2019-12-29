@@ -654,6 +654,7 @@ func TestUnsubscribeWithoutToken(t *testing.T) {
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
 	nr := NewTestResource(srv, store, NewNotificationsStore())
+	nr.addNewsletters([]string{testNewsletter})
 	nr.setup(srv)
 
 	req, err := http.NewRequest("GET", common.UnsubscribeEndpoint, nil)

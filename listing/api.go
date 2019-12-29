@@ -262,11 +262,6 @@ func (nr *NewsletterResource) unsubscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if unsubscribeToken == "" {
-		http.Error(w, "The token query-string parameter is required", http.StatusBadRequest)
-		return
-	}
-
 	email, ok := common.Unsign(nr.secret, unsubscribeToken)
 	if !ok {
 		log.Printf("Failed to unsign token. value=%q", unsubscribeToken)
@@ -292,11 +287,6 @@ func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
 
 	if !nr.isValidNewsletter(newsletter) {
 		http.Error(w, "Invalid newsletter param", http.StatusBadRequest)
-		return
-	}
-
-	if subscribeToken == "" {
-		http.Error(w, "The token query-string parameter is required", http.StatusBadRequest)
 		return
 	}
 
