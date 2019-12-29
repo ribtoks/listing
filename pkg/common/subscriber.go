@@ -11,10 +11,12 @@ type Subscriber struct {
 	ConfirmedAt    JSONTime `json:"confirmed_at"`
 }
 
+// Confirmed checks if subscriber has confirmed the email via link
 func (s *Subscriber) Confirmed() bool {
 	return s.ConfirmedAt.Time().Sub(s.CreatedAt.Time()) > 0
 }
 
+// Unsubscribed checks if subscriber pressed "Unsubscribe" link
 func (s *Subscriber) Unsubscribed() bool {
 	return s.UnsubscribedAt.Time().Sub(s.CreatedAt.Time()) > 0
 }

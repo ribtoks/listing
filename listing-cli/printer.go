@@ -106,14 +106,7 @@ func NewTSVPrinter(secret string) *TablePrinter {
 }
 
 func (tr *TablePrinter) Append(s *common.Subscriber) {
-	se := &SubscriberEx{
-		Name:         s.Name,
-		Newsletter:   s.Newsletter,
-		Email:        s.Email,
-		Confirmed:    s.Confirmed(),
-		Unsubscribed: s.Unsubscribed(),
-		Token:        common.Sign(tr.secret, s.Email),
-	}
+	se := NewSubscriberEx(s, tr.secret)
 	m := structToMap(se)
 	row := mapValues(m, tr.fields)
 	tr.table.Append(row)
@@ -141,14 +134,7 @@ func NewCSVPrinter(secret string) *CSVPrinter {
 }
 
 func (cr *CSVPrinter) Append(s *common.Subscriber) {
-	se := &SubscriberEx{
-		Name:         s.Name,
-		Newsletter:   s.Newsletter,
-		Email:        s.Email,
-		Confirmed:    s.Confirmed(),
-		Unsubscribed: s.Unsubscribed(),
-		Token:        common.Sign(cr.secret, s.Email),
-	}
+	se := NewSubscriberEx(s, cr.secret)
 	m := structToMap(se)
 	row := mapValues(m, cr.fields)
 	cr.w.Write(row)
