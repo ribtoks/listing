@@ -40,6 +40,18 @@ func (c *listingClient) fetchSubscribers(url string) ([]*common.Subscriber, erro
 	return ss, nil
 }
 
+func (c *listingClient) isSubscriberOK(s *common.Subscriber) bool {
+	if c.noUnconfirmed && !s.Confirmed() {
+		return false
+	}
+
+	if c.noUnsubscribed && s.Unsubscribed() {
+		return false
+	}
+
+	return true
+}
+
 func (c *listingClient) export(newsletter string) error {
 	if newsletter == "" {
 		return errInvalidNewsletter
@@ -54,7 +66,9 @@ func (c *listingClient) export(newsletter string) error {
 		return err
 	}
 	for _, s := range ss {
-		c.printer.Append(s)
+		if c.isSubscriberOK(s) {
+			c.printer.Append(s)
+		}
 	}
 	c.printer.Render()
 	return nil

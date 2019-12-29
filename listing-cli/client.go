@@ -9,12 +9,14 @@ import (
 )
 
 type listingClient struct {
-	client    *http.Client
-	printer   Printer
-	url       string
-	authToken string
-	secret    string
-	dryRun    bool
+	client         *http.Client
+	printer        Printer
+	url            string
+	authToken      string
+	secret         string
+	dryRun         bool
+	noUnconfirmed  bool
+	noUnsubscribed bool
 }
 
 func (c *listingClient) endpoint(e string) string {

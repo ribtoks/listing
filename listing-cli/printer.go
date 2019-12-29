@@ -18,7 +18,7 @@ type Printer interface {
 	Render() error
 }
 
-func structToMap(cs *common.Subscriber) map[string]string {
+func structToMap(cs *SubscriberEx) map[string]string {
 	values := make(map[string]string)
 	s := reflect.ValueOf(cs).Elem()
 	typeOfT := s.Type()
@@ -27,6 +27,8 @@ func structToMap(cs *common.Subscriber) map[string]string {
 		f := s.Field(i)
 		var v string
 		switch f.Interface().(type) {
+		case bool:
+			v = fmt.Sprintf("%v", f.Bool())
 		case int, int8, int16, int32, int64:
 			v = strconv.FormatInt(f.Int(), 10)
 		case uint, uint8, uint16, uint32, uint64:
@@ -59,12 +61,13 @@ func mapValues(m map[string]string, fields []string) []string {
 }
 
 type TablePrinter struct {
+	secret string
 	table  *tablewriter.Table
 	fields []string
 }
 
 func SubscriberHeaders() []string {
-	statType := reflect.TypeOf(common.Subscriber{})
+	statType := reflect.TypeOf(SubscriberEx{})
 	header := make([]string, 0, statType.NumField())
 	for i := 0; i < statType.NumField(); i++ {
 		field := statType.Field(i)
@@ -73,8 +76,9 @@ func SubscriberHeaders() []string {
 	return header
 }
 
-func NewTablePrinter() *TablePrinter {
+func NewTablePrinter(secret string) *TablePrinter {
 	tr := &TablePrinter{
+		secret: secret,
 		table:  tablewriter.NewWriter(os.Stdout),
 		fields: SubscriberHeaders(),
 	}
@@ -83,8 +87,8 @@ func NewTablePrinter() *TablePrinter {
 	return tr
 }
 
-func NewTSVPrinter() *TablePrinter {
-	tr := NewTablePrinter()
+func NewTSVPrinter(secret string) *TablePrinter {
+	tr := NewTablePrinter(secret)
 
 	tr.table.SetAutoWrapText(false)
 	tr.table.SetAutoFormatHeaders(true)
@@ -102,7 +106,15 @@ func NewTSVPrinter() *TablePrinter {
 }
 
 func (tr *TablePrinter) Append(s *common.Subscriber) {
-	m := structToMap(s)
+	se := &SubscriberEx{
+		Name:         s.Name,
+		Newsletter:   s.Newsletter,
+		Email:        s.Email,
+		Confirmed:    s.Confirmed(),
+		Unsubscribed: s.Unsubscribed(),
+		Token:        common.Sign(tr.secret, s.Email),
+	}
+	m := structToMap(se)
 	row := mapValues(m, tr.fields)
 	tr.table.Append(row)
 }
@@ -113,12 +125,14 @@ func (tr *TablePrinter) Render() error {
 }
 
 type CSVPrinter struct {
+	secret string
 	w      *csv.Writer
 	fields []string
 }
 
-func NewCSVPrinter() *CSVPrinter {
+func NewCSVPrinter(secret string) *CSVPrinter {
 	cr := &CSVPrinter{
+		secret: secret,
 		w:      csv.NewWriter(os.Stdout),
 		fields: SubscriberHeaders(),
 	}
@@ -127,7 +141,15 @@ func NewCSVPrinter() *CSVPrinter {
 }
 
 func (cr *CSVPrinter) Append(s *common.Subscriber) {
-	m := structToMap(s)
+	se := &SubscriberEx{
+		Name:         s.Name,
+		Newsletter:   s.Newsletter,
+		Email:        s.Email,
+		Confirmed:    s.Confirmed(),
+		Unsubscribed: s.Unsubscribed(),
+		Token:        common.Sign(cr.secret, s.Email),
+	}
+	m := structToMap(se)
 	row := mapValues(m, cr.fields)
 	cr.w.Write(row)
 }

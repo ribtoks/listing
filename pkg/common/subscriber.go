@@ -11,6 +11,14 @@ type Subscriber struct {
 	ConfirmedAt    JSONTime `json:"confirmed_at"`
 }
 
+func (s *Subscriber) Confirmed() bool {
+	return s.ConfirmedAt.Time().Sub(s.CreatedAt.Time()) > 0
+}
+
+func (s *Subscriber) Unsubscribed() bool {
+	return s.UnsubscribedAt.Time().Sub(s.CreatedAt.Time()) > 0
+}
+
 // SubscriberKey is used for deletion of subscribers
 type SubscriberKey struct {
 	Newsletter string `json:"newsletter"`
