@@ -14,12 +14,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
+	"github.com/ribtoks/listing/pkg/api"
 	"github.com/ribtoks/listing/pkg/db"
 )
 
 var (
 	handlerLambda *httpadapter.HandlerAdapter
-	newsletter    *NewsletterResource
+	newsletter    *api.NewsletterResource
 	HtmlTemplate  *template.Template
 	TextTemplate  *template.Template
 )
@@ -71,23 +72,23 @@ func main() {
 	}
 
 	router := http.NewServeMux()
-	newsletter := &NewsletterResource{
-		apiToken:               apiToken,
-		secret:                 secret,
-		subscribeRedirectURL:   subscribeRedirectUrl,
-		unsubscribeRedirectURL: unsubscribeRedirectUrl,
-		confirmRedirectURL:     confirmRedirectUrl,
-		confirmURL:             confirmUrl,
-		subscribers:            subscribers,
-		notifications:          notifications,
-		mailer:                 mailer,
-		newsletters:            make(map[string]bool),
+	newsletter := &api.NewsletterResource{
+		ApiToken:               apiToken,
+		Secret:                 secret,
+		SubscribeRedirectURL:   subscribeRedirectUrl,
+		UnsubscribeRedirectURL: unsubscribeRedirectUrl,
+		ConfirmRedirectURL:     confirmRedirectUrl,
+		ConfirmURL:             confirmUrl,
+		Subscribers:            subscribers,
+		Notifications:          notifications,
+		Mailer:                 mailer,
+		Newsletters:            make(map[string]bool),
 	}
 
 	sn := strings.Split(supportedNewsletters, ";")
-	newsletter.addNewsletters(sn)
+	newsletter.AddNewsletters(sn)
 
-	newsletter.setup(router)
+	newsletter.Setup(router)
 	handlerLambda = httpadapter.New(router)
 
 	lambda.Start(Handler)
