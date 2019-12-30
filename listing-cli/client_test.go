@@ -195,12 +195,18 @@ func (rp *RawTestPrinter) Render() error {
 	return nil
 }
 
-func NewTestClient(resource *api.NewsletterResource, p Printer, mux *http.ServeMux) (*httptest.Server, *listingClient) {
+func NewTestClient(resource *api.NewsletterResource, p Printer) (*httptest.Server, *listingClient) {
+	mux := http.NewServeMux()
 	server := httptest.NewServer(mux)
 	resource.Setup(mux)
 
 	client := &listingClient{
-		client:         &http.Client{},
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
 		printer:        p,
 		url:            server.URL,
 		authToken:      apiToken,
@@ -221,8 +227,7 @@ func TestExportSubscribers(t *testing.T) {
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
-	mux := http.NewServeMux()
-	srv, cli := NewTestClient(nr, p, mux)
+	srv, cli := NewTestClient(nr, p)
 	defer srv.Close()
 
 	err := cli.export(testNewsletter)
@@ -232,5 +237,28 @@ func TestExportSubscribers(t *testing.T) {
 
 	if len(p.subscribers) != 1 {
 		t.Errorf("Unexpected number of subscribers: %v", len(p.subscribers))
+	}
+}
+
+func TestSubscribe(t *testing.T) {
+	store := NewSubscribersStore()
+	nr := NewTestResource(store, NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	err := cli.subscribe(testEmail, testNewsletter, testName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(store.items) != 1 {
+		t.Errorf("Unexpected number of subscribers: %v", len(store.items))
+	}
+
+	if _, ok := store.items[store.key(testNewsletter, testEmail)]; !ok {
+		t.Errorf("Subscriber is not added to the store")
 	}
 }
