@@ -348,3 +348,25 @@ func TestExportEmptyNewsletter(t *testing.T) {
 		t.Fatalf("Managed to export empty newsletter")
 	}
 }
+
+func TestExportDryRun(t *testing.T) {
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+
+	nr := NewTestResource(store, NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	cli.dryRun = true
+	err := cli.export(testNewsletter)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(p.subscribers) > 0 {
+		t.Errorf("Dry run exported data")
+	}
+}
