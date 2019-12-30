@@ -45,7 +45,7 @@ func (s *SubscribersMapStore) alternateConfirm() {
 	i := 0
 	for _, v := range s.items {
 		if i%2 == 0 {
-			v.ConfirmedAt = common.JSONTime(v.CreatedAt.Time().Add(100 * time.Millisecond))
+			v.ConfirmedAt = common.JSONTime(v.CreatedAt.Time().Add(1 * time.Second))
 		}
 		i += 1
 	}
@@ -55,7 +55,7 @@ func (s *SubscribersMapStore) alternateUnsubscribe() {
 	i := 0
 	for _, v := range s.items {
 		if i%2 == 0 {
-			v.UnsubscribedAt = common.JSONTime(v.CreatedAt.Time().Add(100 * time.Millisecond))
+			v.UnsubscribedAt = common.JSONTime(v.CreatedAt.Time().Add(1 * time.Second))
 		}
 		i += 1
 	}
@@ -329,5 +329,22 @@ func TestSubscribe(t *testing.T) {
 
 	if _, ok := store.items[store.key(testNewsletter, testEmail)]; !ok {
 		t.Errorf("Subscriber is not added to the store")
+	}
+}
+
+func TestExportEmptyNewsletter(t *testing.T) {
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+
+	nr := NewTestResource(store, NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	err := cli.export("")
+	if err == nil {
+		t.Fatalf("Managed to export empty newsletter")
 	}
 }
