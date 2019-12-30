@@ -42,10 +42,12 @@ func (c *listingClient) fetchSubscribers(url string) ([]*common.Subscriber, erro
 
 func (c *listingClient) isSubscriberOK(s *common.Subscriber) bool {
 	if c.noUnconfirmed && !s.Confirmed() {
+		log.Printf("Skipping unconfirmed subscriber. created_at=%v confirmed_at=%v confirmed=%v", s.CreatedAt, s.ConfirmedAt, s.Confirmed())
 		return false
 	}
 
 	if c.noUnsubscribed && s.Unsubscribed() {
+		log.Printf("Skipping unsubscribed subscriber. created_at=%v unsubscribed_at=%v unsubscribed=%v", s.CreatedAt, s.UnsubscribedAt, s.Unsubscribed())
 		return false
 	}
 

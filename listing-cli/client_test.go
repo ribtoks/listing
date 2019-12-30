@@ -41,6 +41,26 @@ func (s *SubscribersMapStore) key(newsletter, email string) string {
 	return newsletter + email
 }
 
+func (s *SubscribersMapStore) alternateConfirm() {
+	i := 0
+	for _, v := range s.items {
+		if i%2 == 0 {
+			v.ConfirmedAt = common.JSONTime(v.CreatedAt.Time().Add(100 * time.Millisecond))
+		}
+		i += 1
+	}
+}
+
+func (s *SubscribersMapStore) alternateUnsubscribe() {
+	i := 0
+	for _, v := range s.items {
+		if i%2 == 0 {
+			v.UnsubscribedAt = common.JSONTime(v.CreatedAt.Time().Add(100 * time.Millisecond))
+		}
+		i += 1
+	}
+}
+
 func (s *SubscribersMapStore) contains(newsletter, email string) bool {
 	_, ok := s.items[s.key(newsletter, email)]
 	return ok
@@ -180,8 +200,8 @@ type RawTestPrinter struct {
 	subscribers []*common.Subscriber
 }
 
-func NewRawTestPrinter() *RawPrinter {
-	rp := &RawPrinter{
+func NewRawTestPrinter() *RawTestPrinter {
+	rp := &RawTestPrinter{
 		subscribers: make([]*common.Subscriber, 0),
 	}
 	return rp
@@ -219,9 +239,58 @@ func NewTestClient(resource *api.NewsletterResource, p Printer) (*httptest.Serve
 	return server, client
 }
 
-func TestExportSubscribers(t *testing.T) {
+func TestExportSubscribedSubscribers(t *testing.T) {
 	store := NewSubscribersStore()
-	store.AddSubscriber(testNewsletter, testEmail, testName)
+	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
+	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
+	store.alternateUnsubscribe()
+
+	nr := NewTestResource(store, NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	cli.noUnsubscribed = true
+	err := cli.export(testNewsletter)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(p.subscribers) != 1 {
+		t.Errorf("Unexpected number of subscribers: %v", len(p.subscribers))
+	}
+}
+
+func TestExportConfirmedSubscribers(t *testing.T) {
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
+	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
+	store.alternateConfirm()
+
+	nr := NewTestResource(store, NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	cli.noUnconfirmed = true
+	err := cli.export(testNewsletter)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(p.subscribers) != 1 {
+		t.Errorf("Unexpected number of subscribers: %v", len(p.subscribers))
+	}
+}
+
+func TestExportAllSubscribers(t *testing.T) {
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
+	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
 
 	nr := NewTestResource(store, NewNotificationsStore())
 	nr.AddNewsletters([]string{testNewsletter})
@@ -235,7 +304,7 @@ func TestExportSubscribers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(p.subscribers) != 1 {
+	if len(p.subscribers) != 2 {
 		t.Errorf("Unexpected number of subscribers: %v", len(p.subscribers))
 	}
 }
