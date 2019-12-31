@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/ribtoks/listing/pkg/common"
 )
@@ -51,6 +52,11 @@ func (c *listingClient) isSubscriberOK(s *common.Subscriber) bool {
 		return false
 	}
 
+	if _, ok := c.complaints[s.Email]; ok {
+		log.Printf("Skipping bounced or complained subscriber. email=%v", s.Email)
+		return false
+	}
+
 	return true
 }
 
@@ -63,15 +69,35 @@ func (c *listingClient) export(newsletter string) error {
 		return err
 	}
 
+	var wg sync.WaitGroup
+
+	if !c.ignoreComplaints {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := c.updateComplaints()
+			if err != nil {
+				log.Printf("Failed to update complaints. err=%v", err)
+			}
+		}()
+	}
+
 	ss, err := c.fetchSubscribers(endpoint)
 	if err != nil {
 		return err
 	}
+
+	wg.Wait()
+
+	skipped := 0
 	for _, s := range ss {
 		if c.isSubscriberOK(s) {
 			c.printer.Append(s)
+		} else {
+			skipped += 1
 		}
 	}
 	c.printer.Render()
+	log.Printf("Exported subscribers. count=%v skipped=%v", len(ss), skipped)
 	return nil
 }

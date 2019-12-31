@@ -9,14 +9,16 @@ import (
 )
 
 type listingClient struct {
-	client         *http.Client
-	printer        Printer
-	url            string
-	authToken      string
-	secret         string
-	dryRun         bool
-	noUnconfirmed  bool
-	noUnsubscribed bool
+	client           *http.Client
+	printer          Printer
+	url              string
+	authToken        string
+	secret           string
+	complaints       map[string]bool
+	dryRun           bool
+	noUnconfirmed    bool
+	noUnsubscribed   bool
+	ignoreComplaints bool
 }
 
 func (c *listingClient) endpoint(e string) string {
@@ -41,6 +43,14 @@ func (c *listingClient) subscribersURL(newsletter string) (string, error) {
 
 func (c *listingClient) subscribeURL() (string, error) {
 	u, err := url.Parse(c.endpoint(common.SubscribeEndpoint))
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}
+
+func (c *listingClient) complaintsURL() (string, error) {
+	u, err := url.Parse(c.endpoint(common.ComplaintsEndpoint))
 	if err != nil {
 		return "", err
 	}

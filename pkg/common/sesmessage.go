@@ -1,5 +1,11 @@
 package common
 
+const (
+	SoftBounceType = "sb"
+	HardBounceType = "hb"
+	ComplaintType  = "ct"
+)
+
 type SesNotification struct {
 	Email        string   `json:"email"`
 	From         string   `json:"from"`

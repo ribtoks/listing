@@ -6,9 +6,9 @@ type SubscriberEx struct {
 	Name         string `json:"name"`
 	Newsletter   string `json:"newsletter"`
 	Email        string `json:"email"`
+	Token        string `json:"token"`
 	Confirmed    bool   `json:"confirmed"`
 	Unsubscribed bool   `json:"unsubscribed"`
-	Token        string `json:"token"`
 }
 
 func NewSubscriberEx(s *common.Subscriber, secret string) *SubscriberEx {

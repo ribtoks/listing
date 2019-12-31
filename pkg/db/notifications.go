@@ -10,12 +10,6 @@ import (
 	"github.com/ribtoks/listing/pkg/common"
 )
 
-const (
-	SoftBounceType = "soft_bounce"
-	HardBounceType = "hard_bounce"
-	ComplaintType  = "complaint"
-)
-
 // NotificationsDynamoDB is an implementation of Store interface
 // that is capable of working with AWS DynamoDB
 type NotificationsDynamoDB struct {
@@ -59,15 +53,15 @@ func (s *NotificationsDynamoDB) StoreNotification(email, from string, t string) 
 }
 
 func (s *NotificationsDynamoDB) AddBounce(email, from string, isTransient bool) error {
-	bounceType := SoftBounceType
+	bounceType := common.SoftBounceType
 	if !isTransient {
-		bounceType = HardBounceType
+		bounceType = common.HardBounceType
 	}
 	return s.StoreNotification(email, from, bounceType)
 }
 
 func (s *NotificationsDynamoDB) AddComplaint(email, from string) error {
-	return s.StoreNotification(email, from, ComplaintType)
+	return s.StoreNotification(email, from, common.ComplaintType)
 }
 
 func (s *NotificationsDynamoDB) Notifications() (notifications []*common.SesNotification, err error) {

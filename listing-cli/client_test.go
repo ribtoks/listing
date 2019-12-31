@@ -12,7 +12,6 @@ import (
 
 	"github.com/ribtoks/listing/pkg/api"
 	"github.com/ribtoks/listing/pkg/common"
-	"github.com/ribtoks/listing/pkg/db"
 )
 
 const (
@@ -143,9 +142,9 @@ type NotificationsMapStore struct {
 var _ common.NotificationsStore = (*NotificationsMapStore)(nil)
 
 func (s *NotificationsMapStore) AddBounce(email, from string, isTransient bool) error {
-	t := db.SoftBounceType
+	t := common.SoftBounceType
 	if !isTransient {
-		t = db.HardBounceType
+		t = common.HardBounceType
 	}
 	s.items = append(s.items, &common.SesNotification{
 		Email:        email,
@@ -160,7 +159,7 @@ func (s *NotificationsMapStore) AddComplaint(email, from string) error {
 	s.items = append(s.items, &common.SesNotification{
 		Email:        email,
 		ReceivedAt:   common.JsonTimeNow(),
-		Notification: db.ComplaintType,
+		Notification: common.ComplaintType,
 		From:         from,
 	})
 	return nil
@@ -227,13 +226,15 @@ func NewTestClient(resource *api.NewsletterResource, p Printer) (*httptest.Serve
 				return http.ErrUseLastResponse
 			},
 		},
-		printer:        p,
-		url:            server.URL,
-		authToken:      apiToken,
-		secret:         secret,
-		dryRun:         false,
-		noUnconfirmed:  false,
-		noUnsubscribed: false,
+		printer:          p,
+		url:              server.URL,
+		authToken:        apiToken,
+		secret:           secret,
+		complaints:       make(map[string]bool),
+		dryRun:           false,
+		noUnconfirmed:    false,
+		noUnsubscribed:   false,
+		ignoreComplaints: false,
 	}
 
 	return server, client
@@ -309,6 +310,26 @@ func TestExportAllSubscribers(t *testing.T) {
 	}
 }
 
+func TestSubscribeDryRun(t *testing.T) {
+	store := NewSubscribersStore()
+	nr := NewTestResource(store, NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	cli.dryRun = true
+	err := cli.subscribe(testEmail, testNewsletter, testName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(store.items) != 0 {
+		t.Errorf("Unexpected number of subscribers: %v", len(store.items))
+	}
+}
+
 func TestSubscribe(t *testing.T) {
 	store := NewSubscribersStore()
 	nr := NewTestResource(store, NewNotificationsStore())
@@ -368,5 +389,66 @@ func TestExportDryRun(t *testing.T) {
 
 	if len(p.subscribers) > 0 {
 		t.Errorf("Dry run exported data")
+	}
+}
+
+func TestExportSubscribersWithComplaints(t *testing.T) {
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
+	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
+	store.AddSubscriber(testNewsletter, "email3@domain.com", testName)
+
+	complaints := NewNotificationsStore()
+	complaints.AddBounce("email1@domain.com", "no-reply@newsletter.com", false /*is transient*/)
+	complaints.AddBounce("email2@domain.com", "no-reply@newsletter.com", true /*is transient*/)
+	complaints.AddComplaint("email3@domain.com", "no-reply@newsletter.com")
+
+	nr := NewTestResource(store, complaints)
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	err := cli.export(testNewsletter)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(p.subscribers) != 1 {
+		t.Errorf("Unexpected number of subscribers: %v", len(p.subscribers))
+	}
+
+	if p.subscribers[0].Email != "email2@domain.com" {
+		t.Errorf("Wrong subsciber has been exported")
+	}
+}
+
+func TestExportSubscribersWithoutComplaints(t *testing.T) {
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
+	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
+	store.AddSubscriber(testNewsletter, "email3@domain.com", testName)
+
+	complaints := NewNotificationsStore()
+	complaints.AddBounce("email1@domain.com", "no-reply@newsletter.com", false /*is transient*/)
+	complaints.AddBounce("email2@domain.com", "no-reply@newsletter.com", true /*is transient*/)
+	complaints.AddComplaint("email3@domain.com", "no-reply@newsletter.com")
+
+	nr := NewTestResource(store, complaints)
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	cli.ignoreComplaints = true
+	err := cli.export(testNewsletter)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(p.subscribers) != 3 {
+		t.Errorf("Unexpected number of subscribers: %v", len(p.subscribers))
 	}
 }

@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ribtoks/listing/pkg/common"
-	"github.com/ribtoks/listing/pkg/db"
 )
 
 const (
@@ -161,9 +160,9 @@ type NotificationsMapStore struct {
 var _ common.NotificationsStore = (*NotificationsMapStore)(nil)
 
 func (s *NotificationsMapStore) AddBounce(email, from string, isTransient bool) error {
-	t := db.SoftBounceType
+	t := common.SoftBounceType
 	if !isTransient {
-		t = db.HardBounceType
+		t = common.HardBounceType
 	}
 	s.items = append(s.items, &common.SesNotification{
 		Email:        email,
@@ -178,7 +177,7 @@ func (s *NotificationsMapStore) AddComplaint(email, from string) error {
 	s.items = append(s.items, &common.SesNotification{
 		Email:        email,
 		ReceivedAt:   common.JsonTimeNow(),
-		Notification: db.ComplaintType,
+		Notification: common.ComplaintType,
 		From:         from,
 	})
 	return nil

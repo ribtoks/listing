@@ -12,20 +12,21 @@ import (
 )
 
 var (
-	modeFlag           = flag.String("mode", "", "Execution mode: subscribe|unsubscribe|export|import|delete")
-	urlFlag            = flag.String("url", "", "Base URL to the listing API")
-	emailFlag          = flag.String("email", "", "Email for subscribe|unsubscribe")
-	authTokenFlag      = flag.String("auth-token", "", "Auth token for admin access")
-	secretFlag         = flag.String("secret", "", "Secret for email salt")
-	newsletterFlag     = flag.String("newsletter", "", "Newsletter for subscribe|unsubscribe")
-	formatFlag         = flag.String("format", "table", "Ouput format of subscribers: csv|tsv|table|raw")
-	nameFlag           = flag.String("name", "", "(optional) Name for subscribe")
-	logPathFlag        = flag.String("l", "listing-cli.log", "Absolute path to log file")
-	stdoutFlag         = flag.Bool("stdout", false, "Log to stdout and to logfile")
-	helpFlag           = flag.Bool("help", false, "Print help")
-	dryRunFlag         = flag.Bool("dry-run", false, "Simulate selected action")
-	noUnconfirmedFlag  = flag.Bool("no-unconfirmed", false, "Do not export unconfirmed emails")
-	noUnsubscribedFlag = flag.Bool("no-unsubscribed", false, "Do not export unsubscribed emails")
+	modeFlag             = flag.String("mode", "", "Execution mode: subscribe|unsubscribe|export|import|delete")
+	urlFlag              = flag.String("url", "", "Base URL to the listing API")
+	emailFlag            = flag.String("email", "", "Email for subscribe|unsubscribe")
+	authTokenFlag        = flag.String("auth-token", "", "Auth token for admin access")
+	secretFlag           = flag.String("secret", "", "Secret for email salt")
+	newsletterFlag       = flag.String("newsletter", "", "Newsletter for subscribe|unsubscribe")
+	formatFlag           = flag.String("format", "table", "Ouput format of subscribers: csv|tsv|table|raw")
+	nameFlag             = flag.String("name", "", "(optional) Name for subscribe")
+	logPathFlag          = flag.String("l", "listing-cli.log", "Absolute path to log file")
+	stdoutFlag           = flag.Bool("stdout", false, "Log to stdout and to logfile")
+	helpFlag             = flag.Bool("help", false, "Print help")
+	dryRunFlag           = flag.Bool("dry-run", false, "Simulate selected action")
+	noUnconfirmedFlag    = flag.Bool("no-unconfirmed", false, "Do not export unconfirmed emails")
+	noUnsubscribedFlag   = flag.Bool("no-unsubscribed", false, "Do not export unsubscribed emails")
+	ignoreComplaintsFlag = flag.Bool("ignore-complaints", false, "Ignore bounces and complaints for export")
 )
 
 const (
@@ -60,13 +61,15 @@ func main() {
 				return http.ErrUseLastResponse
 			},
 		},
-		printer:        NewPrinter(),
-		url:            *urlFlag,
-		authToken:      *authTokenFlag,
-		secret:         *secretFlag,
-		dryRun:         *dryRunFlag,
-		noUnconfirmed:  *noUnconfirmedFlag,
-		noUnsubscribed: *noUnsubscribedFlag,
+		printer:          NewPrinter(),
+		url:              *urlFlag,
+		authToken:        *authTokenFlag,
+		secret:           *secretFlag,
+		complaints:       make(map[string]bool),
+		dryRun:           *dryRunFlag,
+		noUnconfirmed:    *noUnconfirmedFlag,
+		noUnsubscribed:   *noUnsubscribedFlag,
+		ignoreComplaints: *ignoreComplaintsFlag,
 	}
 
 	switch *modeFlag {
