@@ -112,6 +112,14 @@
   revision = "9661bd69e9ad6fce1f7579022bdab0440807722a"
   version = "v1.1"
 
+[[projects]]
+  digest = "1:5a53f6ef09fb1ac261a97f8a72e8837ff53cbaa969022a6679da210e4cbe9b0f"
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  pruneopts = ""
+  revision = "1f64d6156d11335c3f22d9330b0ad14fc1e789ce"
+  version = "v2.2.7"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -129,6 +137,7 @@
     "github.com/olekukonko/tablewriter",
     "github.com/ribtoks/backoff",
     "github.com/ribtoks/checkmail",
+    "gopkg.in/yaml.v2",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

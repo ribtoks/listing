@@ -11,6 +11,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/ribtoks/listing/pkg/common"
+	"gopkg.in/yaml.v2"
 )
 
 type Printer interface {
@@ -162,6 +163,33 @@ func (rp *RawPrinter) Append(s *common.Subscriber) {
 
 func (rp *RawPrinter) Render() error {
 	data, err := json.MarshalIndent(rp.subscribers, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
+	return nil
+}
+
+type YamlPrinter struct {
+	secret      string
+	subscribers []*SubscriberEx
+}
+
+func NewYamlPrinter(secret string) *YamlPrinter {
+	yp := &YamlPrinter{
+		secret:      secret,
+		subscribers: make([]*SubscriberEx, 0),
+	}
+	return yp
+}
+
+func (yp *YamlPrinter) Append(s *common.Subscriber) {
+	se := NewSubscriberEx(s, yp.secret)
+	yp.subscribers = append(yp.subscribers, se)
+}
+
+func (yp *YamlPrinter) Render() error {
+	data, err := yaml.Marshal(yp.subscribers)
 	if err != nil {
 		return err
 	}
