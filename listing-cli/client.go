@@ -49,6 +49,14 @@ func (c *listingClient) subscribeURL() (string, error) {
 	return u.String(), nil
 }
 
+func (c *listingClient) unsubscribeURL() (string, error) {
+	u, err := url.Parse(c.endpoint(common.UnsubscribeEndpoint))
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}
+
 func (c *listingClient) complaintsURL() (string, error) {
 	u, err := url.Parse(c.endpoint(common.ComplaintsEndpoint))
 	if err != nil {

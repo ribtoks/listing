@@ -353,6 +353,57 @@ func TestSubscribe(t *testing.T) {
 	}
 }
 
+func TestUnsubscribeDryRun(t *testing.T) {
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+
+	nr := NewTestResource(store, NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	cli.dryRun = true
+	err := cli.unsubscribe(testEmail, testNewsletter)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(store.items) != 1 {
+		t.Errorf("Unexpected number of subscribers: %v", len(store.items))
+	}
+
+	if store.items[store.key(testNewsletter, testEmail)].Unsubscribed() {
+		t.Errorf("Subscriber was unsubscribed")
+	}
+}
+
+func TestUnsubscribe(t *testing.T) {
+	store := NewSubscribersStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+
+	nr := NewTestResource(store, NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	err := cli.unsubscribe(testEmail, testNewsletter)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(store.items) != 1 {
+		t.Errorf("Unexpected number of subscribers: %v", len(store.items))
+	}
+
+	if !store.items[store.key(testNewsletter, testEmail)].Unsubscribed() {
+		t.Errorf("Subscriber was not unsubscribed")
+	}
+}
+
 func TestExportEmptyNewsletter(t *testing.T) {
 	store := NewSubscribersStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)

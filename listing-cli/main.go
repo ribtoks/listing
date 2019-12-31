@@ -81,6 +81,10 @@ func main() {
 		{
 			err = client.subscribe(*emailFlag, *newsletterFlag, *nameFlag)
 		}
+	case modeUnsubscribe:
+		{
+			err = client.unsubscribe(*emailFlag, *newsletterFlag)
+		}
 	default:
 		fmt.Printf("Mode %v is not supported yet", *modeFlag)
 	}
