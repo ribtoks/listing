@@ -115,43 +115,50 @@ func setupLogging() (f *os.File, err error) {
 	return f, err
 }
 
-func parseFlags() error {
+func parseFlags() (err error) {
 	flag.Parse()
 
-	if *modeFlag == "" {
-		return errors.New("Mode is required")
-	}
-
 	switch *modeFlag {
+	case "":
+		err = errors.New("Mode is required")
 	case modeDelete, modeExport, modeImport, modeSubscribe, modeUnsubscribe:
-		// good to go
+		err = nil
 	default:
-		return fmt.Errorf("Mode %v is not supported", *modeFlag)
+		err = fmt.Errorf("Mode %v is not supported", *modeFlag)
+	}
+	if err != nil {
+		return
 	}
 
-	if *urlFlag == "" {
-		return errors.New("Url is required")
+	switch *urlFlag {
+	case "":
+		err = errors.New("Url is required")
+	default:
+		if _, e := url.Parse(*urlFlag); e != nil {
+			err = fmt.Errorf("Failed to parse url. err=%v", e)
+		}
 	}
-
-	if _, err := url.Parse(*urlFlag); err != nil {
-		return fmt.Errorf("Failed to parse url. err=%v", err)
+	if err != nil {
+		return
 	}
 
 	switch *modeFlag {
 	case modeExport, modeUnsubscribe:
 		if *secretFlag == "" {
-			return errors.New("Secret flag is required")
+			err = errors.New("Secret flag is required")
 		}
+	}
+	if err != nil {
+		return
 	}
 
 	switch *modeFlag {
 	case modeExport, modeImport, modeDelete:
 		if *authTokenFlag == "" {
-			return errors.New("Auth token is required")
+			err = errors.New("Auth token is required")
 		}
 	}
-
-	return nil
+	return
 }
 
 func NewPrinter() Printer {
