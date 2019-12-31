@@ -8,6 +8,7 @@ Endpoint | Method | Parameters | Description
 `/subscribers` | GET | `newsletter` | Protected API to retrieve all subscribers for a newsletter
 `/subscribers` | PUT | JSON with Subscribers array | Protected API to import subscribers
 `/subscribers` | DELETE | JSON with Subscriber Keys array | Protected API to delete subscribers
+`/complaints` | GET | none | Protected API to retrieve all bounces and complaints from AWS SES
 
 `token` parameter is a salted hash of the email used to uniquely identify every user. It is a security measure to protect from unauthorized unsubscribes/confirmations.
 
