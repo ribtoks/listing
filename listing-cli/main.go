@@ -119,18 +119,18 @@ func parseFlags() error {
 	flag.Parse()
 
 	if *modeFlag == "" {
-		return errors.New("Mode is a required parameter")
+		return errors.New("Mode is required")
 	}
 
-	found := false
-	for _, m := range supportedModes {
-		if m == *modeFlag {
-			found = true
-			break
-		}
-	}
-	if !found {
+	switch *modeFlag {
+	case modeDelete, modeExport, modeImport, modeSubscribe, modeUnsubscribe:
+		// good to go
+	default:
 		return fmt.Errorf("Mode %v is not supported", *modeFlag)
+	}
+
+	if *urlFlag == "" {
+		return errors.New("Url is required")
 	}
 
 	if _, err := url.Parse(*urlFlag); err != nil {
@@ -139,19 +139,15 @@ func parseFlags() error {
 
 	switch *modeFlag {
 	case modeExport, modeUnsubscribe:
-		{
-			if *secretFlag == "" {
-				return errors.New("Secret flag is empty")
-			}
+		if *secretFlag == "" {
+			return errors.New("Secret flag is required")
 		}
 	}
 
 	switch *modeFlag {
 	case modeExport, modeImport, modeDelete:
-		{
-			if *authTokenFlag == "" {
-				return errors.New("Auth token is empty")
-			}
+		if *authTokenFlag == "" {
+			return errors.New("Auth token is required")
 		}
 	}
 
