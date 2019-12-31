@@ -22,7 +22,42 @@ const (
 	testNewsletter = "testnewsletter"
 )
 
-var incorrectTime = common.JSONTime(time.Unix(1, 1))
+var (
+	incorrectTime       = common.JSONTime(time.Unix(1, 1))
+	errFromFailingStore = errors.New("Error!")
+)
+
+type FailingSubscriberStore struct{}
+
+var _ common.SubscribersStore = (*FailingSubscriberStore)(nil)
+
+func (s *FailingSubscriberStore) AddSubscriber(newsletter, email, name string) error {
+	return errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) RemoveSubscriber(newsletter, email string) error {
+	return errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) Subscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
+	return nil, errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) AddSubscribers(subscribers []*common.Subscriber) error {
+	return errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) DeleteSubscribers(keys []*common.SubscriberKey) error {
+	return errFromFailingStore
+}
+
+func (s *FailingSubscriberStore) ConfirmSubscriber(newsletter, email string) error {
+	return errFromFailingStore
+}
+
+func NewFailingStore() *FailingSubscriberStore {
+	return &FailingSubscriberStore{}
+}
 
 type DevNullMailer struct{}
 
@@ -504,5 +539,71 @@ func TestExportSubscribersWithoutComplaints(t *testing.T) {
 
 	if len(p.subscribers) != 3 {
 		t.Errorf("Unexpected number of subscribers: %v", len(p.subscribers))
+	}
+}
+
+func TestSubscribeErrorStore(t *testing.T) {
+	nr := NewTestResource(NewFailingStore(), NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	err := cli.subscribe(testEmail, testNewsletter, testName)
+	if err == nil {
+		t.Fatal("Subscribed with failing store")
+	}
+}
+
+func TestUnsubscribeErrorStore(t *testing.T) {
+	nr := NewTestResource(NewFailingStore(), NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	err := cli.unsubscribe(testEmail, testNewsletter)
+	if err == nil {
+		t.Fatal("Unsubscribed with failing store")
+	}
+}
+
+func TestSubscribeErrors(t *testing.T) {
+	nr := NewTestResource(NewSubscribersStore(), NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	err := cli.subscribe("", testNewsletter, testName)
+	if err == nil {
+		t.Fatal("Subscribed with empty email")
+	}
+
+	err = cli.subscribe(testEmail, "", testName)
+	if err == nil {
+		t.Fatal("Subscribed with empty newsletter")
+	}
+}
+
+func TestUnsubscribeErrors(t *testing.T) {
+	nr := NewTestResource(NewSubscribersStore(), NewNotificationsStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	p := NewRawTestPrinter()
+	srv, cli := NewTestClient(nr, p)
+	defer srv.Close()
+
+	err := cli.unsubscribe("", testNewsletter)
+	if err == nil {
+		t.Fatal("Unsubscribed with empty email")
+	}
+
+	err = cli.unsubscribe(testEmail, "")
+	if err == nil {
+		t.Fatal("Unsubscribed with empty newsletter")
 	}
 }
