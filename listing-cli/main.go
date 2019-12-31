@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 )
@@ -130,6 +131,28 @@ func parseFlags() error {
 	}
 	if !found {
 		return fmt.Errorf("Mode %v is not supported", *modeFlag)
+	}
+
+	if _, err := url.Parse(*urlFlag); err != nil {
+		return fmt.Errorf("Failed to parse url. err=%v", err)
+	}
+
+	switch *modeFlag {
+	case modeExport, modeUnsubscribe:
+		{
+			if *secretFlag == "" {
+				return errors.New("Secret flag is empty")
+			}
+		}
+	}
+
+	switch *modeFlag {
+	case modeExport, modeImport, modeDelete:
+		{
+			if *authTokenFlag == "" {
+				return errors.New("Auth token is empty")
+			}
+		}
 	}
 
 	return nil
