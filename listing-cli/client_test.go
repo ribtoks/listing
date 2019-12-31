@@ -395,12 +395,15 @@ func TestUnsubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	time.Sleep(1 * time.Millisecond)
+
 	if len(store.items) != 1 {
 		t.Errorf("Unexpected number of subscribers: %v", len(store.items))
 	}
 
-	if !store.items[store.key(testNewsletter, testEmail)].Unsubscribed() {
-		t.Errorf("Subscriber was not unsubscribed")
+	i := store.items[store.key(testNewsletter, testEmail)]
+	if !i.Unsubscribed() {
+		t.Errorf("Subscriber was not unsubscribed. created_at=%v unsubscribed_at=%v", i.CreatedAt, i.UnsubscribedAt)
 	}
 }
 
