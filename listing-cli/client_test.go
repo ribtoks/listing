@@ -6,12 +6,12 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/ribtoks/listing/pkg/api"
 	"github.com/ribtoks/listing/pkg/common"
+	"github.com/ribtoks/listing/pkg/db"
 )
 
 const (
@@ -65,143 +65,20 @@ func (m *DevNullMailer) SendConfirmation(newsletter, email, name, confirmUrl str
 	return nil
 }
 
-type SubscribersMapStore struct {
-	items map[string]*common.Subscriber
-}
-
-var _ common.SubscribersStore = (*SubscribersMapStore)(nil)
-
-func (s *SubscribersMapStore) key(newsletter, email string) string {
-	return newsletter + email
-}
-
-func (s *SubscribersMapStore) alternateConfirm() {
-	i := 0
-	for _, v := range s.items {
+func alternateConfirm(ss []*common.Subscriber) {
+	for i, v := range ss {
 		if i%2 == 0 {
 			v.ConfirmedAt = common.JSONTime(v.CreatedAt.Time().Add(1 * time.Second))
 		}
-		i += 1
 	}
 }
 
-func (s *SubscribersMapStore) alternateUnsubscribe() {
-	i := 0
-	for _, v := range s.items {
+func alternateUnsubscribe(ss []*common.Subscriber) {
+	for i, v := range ss {
 		if i%2 == 0 {
 			v.UnsubscribedAt = common.JSONTime(v.CreatedAt.Time().Add(1 * time.Second))
 		}
-		i += 1
 	}
-}
-
-func (s *SubscribersMapStore) contains(newsletter, email string) bool {
-	_, ok := s.items[s.key(newsletter, email)]
-	return ok
-}
-
-func (s *SubscribersMapStore) AddSubscriber(newsletter, email, name string) error {
-	key := s.key(newsletter, email)
-	if _, ok := s.items[key]; ok {
-		return errors.New("Subscriber already exists")
-	}
-
-	s.items[key] = &common.Subscriber{
-		Newsletter:     newsletter,
-		Email:          email,
-		CreatedAt:      common.JsonTimeNow(),
-		ConfirmedAt:    incorrectTime,
-		UnsubscribedAt: incorrectTime,
-	}
-	return nil
-}
-
-func (s *SubscribersMapStore) RemoveSubscriber(newsletter, email string) error {
-	key := s.key(newsletter, email)
-	if i, ok := s.items[key]; ok {
-		i.UnsubscribedAt = common.JsonTimeNow()
-		return nil
-	}
-	return errors.New("Subscriber does not exist")
-}
-
-func (s *SubscribersMapStore) DeleteSubscribers(keys []*common.SubscriberKey) error {
-	for _, k := range keys {
-		key := s.key(k.Newsletter, k.Email)
-		delete(s.items, key)
-	}
-	return nil
-}
-
-func (s *SubscribersMapStore) Subscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
-	for key, value := range s.items {
-		if strings.HasPrefix(key, newsletter) {
-			subscribers = append(subscribers, value)
-		}
-	}
-	return subscribers, nil
-}
-
-func (s *SubscribersMapStore) AddSubscribers(subscribers []*common.Subscriber) error {
-	for _, i := range subscribers {
-		s.items[s.key(i.Newsletter, i.Email)] = i
-	}
-	return nil
-}
-
-func (s *SubscribersMapStore) ConfirmSubscriber(newsletter, email string) error {
-	key := s.key(newsletter, email)
-	if i, ok := s.items[key]; ok {
-		i.ConfirmedAt = common.JsonTimeNow()
-		return nil
-	}
-	return errors.New("Subscriber does not exist")
-}
-
-func NewSubscribersStore() *SubscribersMapStore {
-	return &SubscribersMapStore{
-		items: make(map[string]*common.Subscriber),
-	}
-}
-
-func NewNotificationsStore() *NotificationsMapStore {
-	return &NotificationsMapStore{
-		items: make([]*common.SesNotification, 0),
-	}
-}
-
-type NotificationsMapStore struct {
-	items []*common.SesNotification
-}
-
-var _ common.NotificationsStore = (*NotificationsMapStore)(nil)
-
-func (s *NotificationsMapStore) AddBounce(email, from string, isTransient bool) error {
-	t := common.SoftBounceType
-	if !isTransient {
-		t = common.HardBounceType
-	}
-	s.items = append(s.items, &common.SesNotification{
-		Email:        email,
-		ReceivedAt:   common.JsonTimeNow(),
-		Notification: t,
-		From:         from,
-	})
-	return nil
-}
-
-func (s *NotificationsMapStore) AddComplaint(email, from string) error {
-	s.items = append(s.items, &common.SesNotification{
-		Email:        email,
-		ReceivedAt:   common.JsonTimeNow(),
-		Notification: common.ComplaintType,
-		From:         from,
-	})
-	return nil
-}
-
-func (s *NotificationsMapStore) Notifications() (notifications []*common.SesNotification, err error) {
-	return s.items, nil
 }
 
 func NewTestResource(subscribers common.SubscribersStore, notifications common.NotificationsStore) *api.NewsletterResource {
@@ -276,12 +153,13 @@ func NewTestClient(resource *api.NewsletterResource, p Printer) (*httptest.Serve
 }
 
 func TestExportSubscribedSubscribers(t *testing.T) {
-	store := NewSubscribersStore()
+	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
-	store.alternateUnsubscribe()
+	ss, _ := store.Subscribers(testNewsletter)
+	alternateUnsubscribe(ss)
 
-	nr := NewTestResource(store, NewNotificationsStore())
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -300,12 +178,13 @@ func TestExportSubscribedSubscribers(t *testing.T) {
 }
 
 func TestExportConfirmedSubscribers(t *testing.T) {
-	store := NewSubscribersStore()
+	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
-	store.alternateConfirm()
+	ss, _ := store.Subscribers(testNewsletter)
+	alternateConfirm(ss)
 
-	nr := NewTestResource(store, NewNotificationsStore())
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -324,11 +203,11 @@ func TestExportConfirmedSubscribers(t *testing.T) {
 }
 
 func TestExportAllSubscribers(t *testing.T) {
-	store := NewSubscribersStore()
+	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
 
-	nr := NewTestResource(store, NewNotificationsStore())
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -346,8 +225,8 @@ func TestExportAllSubscribers(t *testing.T) {
 }
 
 func TestSubscribeDryRun(t *testing.T) {
-	store := NewSubscribersStore()
-	nr := NewTestResource(store, NewNotificationsStore())
+	store := db.NewSubscribersMapStore()
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -360,14 +239,14 @@ func TestSubscribeDryRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(store.items) != 0 {
-		t.Errorf("Unexpected number of subscribers: %v", len(store.items))
+	if store.Count() != 0 {
+		t.Errorf("Unexpected number of subscribers: %v", store.Count())
 	}
 }
 
 func TestSubscribe(t *testing.T) {
-	store := NewSubscribersStore()
-	nr := NewTestResource(store, NewNotificationsStore())
+	store := db.NewSubscribersMapStore()
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -379,20 +258,20 @@ func TestSubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(store.items) != 1 {
-		t.Errorf("Unexpected number of subscribers: %v", len(store.items))
+	if store.Count() != 1 {
+		t.Errorf("Unexpected number of subscribers: %v", store.Count())
 	}
 
-	if _, ok := store.items[store.key(testNewsletter, testEmail)]; !ok {
+	if _, err := store.GetSubscriber(testNewsletter, testEmail); err != nil {
 		t.Errorf("Subscriber is not added to the store")
 	}
 }
 
 func TestUnsubscribeDryRun(t *testing.T) {
-	store := NewSubscribersStore()
+	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(store, NewNotificationsStore())
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -405,20 +284,21 @@ func TestUnsubscribeDryRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(store.items) != 1 {
-		t.Errorf("Unexpected number of subscribers: %v", len(store.items))
+	if store.Count() != 1 {
+		t.Errorf("Unexpected number of subscribers: %v", store.Count())
 	}
 
-	if store.items[store.key(testNewsletter, testEmail)].Unsubscribed() {
+	i, _ := store.GetSubscriber(testNewsletter, testEmail)
+	if i.Unsubscribed() {
 		t.Errorf("Subscriber was unsubscribed")
 	}
 }
 
 func TestUnsubscribe(t *testing.T) {
-	store := NewSubscribersStore()
+	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(store, NewNotificationsStore())
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -432,21 +312,21 @@ func TestUnsubscribe(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond)
 
-	if len(store.items) != 1 {
-		t.Errorf("Unexpected number of subscribers: %v", len(store.items))
+	if store.Count() != 1 {
+		t.Errorf("Unexpected number of subscribers: %v", store.Count())
 	}
 
-	i := store.items[store.key(testNewsletter, testEmail)]
+	i, _ := store.GetSubscriber(testNewsletter, testEmail)
 	if !i.Unsubscribed() {
 		t.Errorf("Subscriber was not unsubscribed. created_at=%v unsubscribed_at=%v", i.CreatedAt, i.UnsubscribedAt)
 	}
 }
 
 func TestExportEmptyNewsletter(t *testing.T) {
-	store := NewSubscribersStore()
+	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(store, NewNotificationsStore())
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -460,10 +340,10 @@ func TestExportEmptyNewsletter(t *testing.T) {
 }
 
 func TestExportDryRun(t *testing.T) {
-	store := NewSubscribersStore()
+	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(store, NewNotificationsStore())
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -482,12 +362,12 @@ func TestExportDryRun(t *testing.T) {
 }
 
 func TestExportSubscribersWithComplaints(t *testing.T) {
-	store := NewSubscribersStore()
+	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email3@domain.com", testName)
 
-	complaints := NewNotificationsStore()
+	complaints := db.NewNotificationsMapStore()
 	complaints.AddBounce("email1@domain.com", "no-reply@newsletter.com", false /*is transient*/)
 	complaints.AddBounce("email2@domain.com", "no-reply@newsletter.com", true /*is transient*/)
 	complaints.AddComplaint("email3@domain.com", "no-reply@newsletter.com")
@@ -514,12 +394,12 @@ func TestExportSubscribersWithComplaints(t *testing.T) {
 }
 
 func TestExportSubscribersWithoutComplaints(t *testing.T) {
-	store := NewSubscribersStore()
+	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email3@domain.com", testName)
 
-	complaints := NewNotificationsStore()
+	complaints := db.NewNotificationsMapStore()
 	complaints.AddBounce("email1@domain.com", "no-reply@newsletter.com", false /*is transient*/)
 	complaints.AddBounce("email2@domain.com", "no-reply@newsletter.com", true /*is transient*/)
 	complaints.AddComplaint("email3@domain.com", "no-reply@newsletter.com")
@@ -543,7 +423,7 @@ func TestExportSubscribersWithoutComplaints(t *testing.T) {
 }
 
 func TestSubscribeErrorStore(t *testing.T) {
-	nr := NewTestResource(NewFailingStore(), NewNotificationsStore())
+	nr := NewTestResource(NewFailingStore(), db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -557,7 +437,7 @@ func TestSubscribeErrorStore(t *testing.T) {
 }
 
 func TestUnsubscribeErrorStore(t *testing.T) {
-	nr := NewTestResource(NewFailingStore(), NewNotificationsStore())
+	nr := NewTestResource(NewFailingStore(), db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -571,7 +451,7 @@ func TestUnsubscribeErrorStore(t *testing.T) {
 }
 
 func TestSubscribeErrors(t *testing.T) {
-	nr := NewTestResource(NewSubscribersStore(), NewNotificationsStore())
+	nr := NewTestResource(db.NewSubscribersMapStore(), db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -590,7 +470,7 @@ func TestSubscribeErrors(t *testing.T) {
 }
 
 func TestUnsubscribeErrors(t *testing.T) {
-	nr := NewTestResource(NewSubscribersStore(), NewNotificationsStore())
+	nr := NewTestResource(db.NewSubscribersMapStore(), db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()

@@ -85,3 +85,49 @@ func (s *NotificationsDynamoDB) Notifications() (notifications []*common.SesNoti
 
 	return
 }
+
+type NotificationsMapStore struct {
+	items []*common.SesNotification
+}
+
+var _ common.NotificationsStore = (*NotificationsMapStore)(nil)
+
+func (s *NotificationsMapStore) AddBounce(email, from string, isTransient bool) error {
+	t := common.SoftBounceType
+	if !isTransient {
+		t = common.HardBounceType
+	}
+	s.items = append(s.items, &common.SesNotification{
+		Email:        email,
+		ReceivedAt:   common.JsonTimeNow(),
+		Notification: t,
+		From:         from,
+	})
+	return nil
+}
+
+func (s *NotificationsMapStore) AddComplaint(email, from string) error {
+	s.items = append(s.items, &common.SesNotification{
+		Email:        email,
+		ReceivedAt:   common.JsonTimeNow(),
+		Notification: common.ComplaintType,
+		From:         from,
+	})
+	return nil
+}
+
+func (s *NotificationsMapStore) Notifications() (notifications []*common.SesNotification, err error) {
+	return s.items, nil
+}
+
+func NewSubscribersMapStore() *SubscribersMapStore {
+	return &SubscribersMapStore{
+		items: make(map[string]*common.Subscriber),
+	}
+}
+
+func NewNotificationsMapStore() *NotificationsMapStore {
+	return &NotificationsMapStore{
+		items: make([]*common.SesNotification, 0),
+	}
+}

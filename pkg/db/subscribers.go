@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -279,4 +280,90 @@ func (s *SubscribersDynamoDB) DeleteSubscribers(keys []*common.SubscriberKey) er
 		}
 	}
 	return nil
+}
+
+type SubscribersMapStore struct {
+	items map[string]*common.Subscriber
+}
+
+var _ common.SubscribersStore = (*SubscribersMapStore)(nil)
+
+func (s *SubscribersMapStore) key(newsletter, email string) string {
+	return newsletter + email
+}
+
+func (s *SubscribersMapStore) contains(newsletter, email string) bool {
+	_, ok := s.items[s.key(newsletter, email)]
+	return ok
+}
+
+func (s *SubscribersMapStore) Count() int {
+	return len(s.items)
+}
+
+func (s *SubscribersMapStore) GetSubscriber(newsletter, email string) (*common.Subscriber, error) {
+	key := s.key(newsletter, email)
+	sr, ok := s.items[key]
+	if !ok {
+		return nil, errors.New("Subscriber does not exist")
+	}
+	return sr, nil
+}
+
+func (s *SubscribersMapStore) AddSubscriber(newsletter, email, name string) error {
+	key := s.key(newsletter, email)
+	if _, ok := s.items[key]; ok {
+		return errors.New("Subscriber already exists")
+	}
+
+	s.items[key] = &common.Subscriber{
+		Newsletter:     newsletter,
+		Email:          email,
+		CreatedAt:      common.JsonTimeNow(),
+		ConfirmedAt:    incorrectTime,
+		UnsubscribedAt: incorrectTime,
+	}
+	return nil
+}
+
+func (s *SubscribersMapStore) RemoveSubscriber(newsletter, email string) error {
+	key := s.key(newsletter, email)
+	if i, ok := s.items[key]; ok {
+		i.UnsubscribedAt = common.JsonTimeNow()
+		return nil
+	}
+	return errors.New("Subscriber does not exist")
+}
+
+func (s *SubscribersMapStore) DeleteSubscribers(keys []*common.SubscriberKey) error {
+	for _, k := range keys {
+		key := s.key(k.Newsletter, k.Email)
+		delete(s.items, key)
+	}
+	return nil
+}
+
+func (s *SubscribersMapStore) Subscribers(newsletter string) (subscribers []*common.Subscriber, err error) {
+	for key, value := range s.items {
+		if strings.HasPrefix(key, newsletter) {
+			subscribers = append(subscribers, value)
+		}
+	}
+	return subscribers, nil
+}
+
+func (s *SubscribersMapStore) AddSubscribers(subscribers []*common.Subscriber) error {
+	for _, i := range subscribers {
+		s.items[s.key(i.Newsletter, i.Email)] = i
+	}
+	return nil
+}
+
+func (s *SubscribersMapStore) ConfirmSubscriber(newsletter, email string) error {
+	key := s.key(newsletter, email)
+	if i, ok := s.items[key]; ok {
+		i.ConfirmedAt = common.JsonTimeNow()
+		return nil
+	}
+	return errors.New("Subscriber does not exist")
 }
