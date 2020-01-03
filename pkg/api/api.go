@@ -316,7 +316,7 @@ func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		log.Printf("Subscriber cannot be found. newsletter=%v email=%v", newsletter, email)
+		log.Printf("Subscriber cannot be found. newsletter=%v email=%v err=%v", newsletter, email, err)
 		http.Error(w, "Error confirming subscription", http.StatusInternalServerError)
 		return
 	}
