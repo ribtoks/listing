@@ -36,12 +36,17 @@ func (m *DevNullMailer) SendConfirmation(newsletter, email, name, confirmUrl str
 	return nil
 }
 
-type FailingSubscriberStore struct{}
+type FailingSubscriberStore struct {
+	failGetSubscriber bool
+}
 
 var _ common.SubscribersStore = (*FailingSubscriberStore)(nil)
 
 func (s *FailingSubscriberStore) GetSubscriber(newsletter, email string) (*common.Subscriber, error) {
-	return nil, errFromFailingStore
+	if s.failGetSubscriber {
+		return nil, errFromFailingStore
+	}
+	return &common.Subscriber{}, nil
 }
 
 func (s *FailingSubscriberStore) AddSubscriber(newsletter, email, name string) error {
@@ -69,7 +74,9 @@ func (s *FailingSubscriberStore) ConfirmSubscriber(newsletter, email string) err
 }
 
 func NewFailingStore() *FailingSubscriberStore {
-	return &FailingSubscriberStore{}
+	return &FailingSubscriberStore{
+		failGetSubscriber: true,
+	}
 }
 
 type FailingNotificationsStore struct{}
@@ -268,6 +275,40 @@ func TestConfirmSubscribeFailingStore(t *testing.T) {
 	srv := http.NewServeMux()
 
 	nr := NewTestResource(NewFailingStore(), db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+	nr.Setup(srv)
+
+	data := url.Values{}
+	data.Set(common.ParamNewsletter, testNewsletter)
+	data.Set(common.ParamToken, common.Sign(secret, testEmail))
+
+	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, testNewsletter)
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+}
+
+func TestConfirmSubscribeFailingStore2(t *testing.T) {
+	srv := http.NewServeMux()
+
+	store := NewFailingStore()
+	store.failGetSubscriber = false
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 	nr.Setup(srv)
 
