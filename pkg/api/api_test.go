@@ -24,6 +24,7 @@ const (
 	testName       = "Foo Bar"
 	testEmail      = "foo@bar.com"
 	testNewsletter = "testnewsletter"
+	testUrl        = "http://mysupertest.com/location"
 )
 
 var incorrectTime = common.JSONTime(time.Unix(1, 1))
@@ -38,6 +39,10 @@ func (m *DevNullMailer) SendConfirmation(newsletter, email, name, confirmUrl str
 type FailingSubscriberStore struct{}
 
 var _ common.SubscribersStore = (*FailingSubscriberStore)(nil)
+
+func (s *FailingSubscriberStore) GetSubscriber(newsletter, email string) (*common.Subscriber, error) {
+	return nil, errFromFailingStore
+}
 
 func (s *FailingSubscriberStore) AddSubscriber(newsletter, email, name string) error {
 	return errFromFailingStore
@@ -194,6 +199,7 @@ func TestSubscribe(t *testing.T) {
 	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{newsletter})
 	nr.Setup(srv)
+	nr.SubscribeRedirectURL = testUrl
 
 	data := url.Values{}
 	data.Set(common.ParamNewsletter, newsletter)
@@ -213,6 +219,15 @@ func TestSubscribe(t *testing.T) {
 
 	if resp.StatusCode != http.StatusFound {
 		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	l, err := resp.Location()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l.String() != testUrl {
+		t.Errorf("Path does not match. expected=%v actual=%v", l.Path, testUrl)
 	}
 
 	ss, _ := store.Subscribers(newsletter)
@@ -354,6 +369,7 @@ func TestConfirmSubscribe(t *testing.T) {
 	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 	nr.Setup(srv)
+	nr.ConfirmRedirectURL = testUrl
 
 	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
 	if err != nil {
@@ -374,6 +390,15 @@ func TestConfirmSubscribe(t *testing.T) {
 	if resp.StatusCode != http.StatusFound {
 		body, _ := ioutil.ReadAll(resp.Body)
 		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+
+	l, err := resp.Location()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l.String() != testUrl {
+		t.Errorf("Path does not match. expected=%v actual=%v", l.Path, testUrl)
 	}
 
 	i, _ := store.GetSubscriber(testNewsletter, testEmail)
@@ -686,6 +711,7 @@ func TestUnsubscribe(t *testing.T) {
 	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 	nr.Setup(srv)
+	nr.UnsubscribeRedirectURL = testUrl
 
 	req, err := http.NewRequest("GET", common.UnsubscribeEndpoint, nil)
 	if err != nil {
@@ -699,11 +725,19 @@ func TestUnsubscribe(t *testing.T) {
 	w := httptest.NewRecorder()
 	time.Sleep(10 * time.Nanosecond)
 	srv.ServeHTTP(w, req)
-
 	resp := w.Result()
 
 	if resp.StatusCode != http.StatusFound {
 		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	l, err := resp.Location()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l.String() != testUrl {
+		t.Errorf("Path does not match. expected=%v actual=%v", l.Path, testUrl)
 	}
 
 	if store.Count() != 1 {
@@ -1148,5 +1182,299 @@ func TestDeleteSubscribersFailingStore(t *testing.T) {
 	if resp.StatusCode != http.StatusInternalServerError {
 		body, _ := ioutil.ReadAll(resp.Body)
 		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+}
+
+func TestSubscribeAlreadyConfirmed(t *testing.T) {
+	srv := http.NewServeMux()
+	store := db.NewSubscribersMapStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+	nr.Setup(srv)
+	nr.ConfirmRedirectURL = testUrl
+
+	s, _ := store.GetSubscriber(testNewsletter, testEmail)
+	s.ConfirmedAt = common.JSONTime(s.CreatedAt.Time().Add(1 * time.Second))
+	if !s.Confirmed() {
+		t.Errorf("Confirmed() is not updated")
+	}
+
+	data := url.Values{}
+	data.Set(common.ParamNewsletter, testNewsletter)
+	data.Set(common.ParamEmail, testEmail)
+
+	req, err := http.NewRequest("POST", common.SubscribeEndpoint, strings.NewReader(data.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	l, err := resp.Location()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l.String() != testUrl {
+		t.Errorf("Path does not match. expected=%v actual=%v", l.Path, testUrl)
+	}
+}
+
+func TestSubscribeAlreadyUnsubscribed(t *testing.T) {
+	srv := http.NewServeMux()
+	store := db.NewSubscribersMapStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+	nr.Setup(srv)
+	nr.SubscribeRedirectURL = testUrl
+
+	s, _ := store.GetSubscriber(testNewsletter, testEmail)
+	s.UnsubscribedAt = common.JSONTime(s.CreatedAt.Time().Add(1 * time.Second))
+	if !s.Unsubscribed() {
+		t.Errorf("Unsubscribed() is not updated")
+	}
+
+	data := url.Values{}
+	data.Set(common.ParamNewsletter, testNewsletter)
+	data.Set(common.ParamEmail, testEmail)
+
+	req, err := http.NewRequest("POST", common.SubscribeEndpoint, strings.NewReader(data.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	l, err := resp.Location()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l.String() != testUrl {
+		t.Errorf("Path does not match. expected=%v actual=%v", l.Path, testUrl)
+	}
+}
+
+func TestSubscribeAlreadyUnsubscribedAndConfirmed(t *testing.T) {
+	srv := http.NewServeMux()
+	store := db.NewSubscribersMapStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+	nr.Setup(srv)
+	nr.SubscribeRedirectURL = testUrl
+
+	s, _ := store.GetSubscriber(testNewsletter, testEmail)
+	s.UnsubscribedAt = common.JSONTime(s.CreatedAt.Time().Add(1 * time.Second))
+	s.ConfirmedAt = common.JSONTime(s.CreatedAt.Time().Add(1 * time.Second))
+	if !s.Unsubscribed() && !s.Confirmed() {
+		t.Errorf("Unsubscribed() and Confirmed() are not updated")
+	}
+
+	data := url.Values{}
+	data.Set(common.ParamNewsletter, testNewsletter)
+	data.Set(common.ParamEmail, testEmail)
+
+	req, err := http.NewRequest("POST", common.SubscribeEndpoint, strings.NewReader(data.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, req)
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	l, err := resp.Location()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l.String() != testUrl {
+		t.Errorf("Path does not match. expected=%v actual=%v", l.Path, testUrl)
+	}
+}
+
+func TestUnsubscribeNotSubscribedYet(t *testing.T) {
+	srv := http.NewServeMux()
+
+	store := db.NewSubscribersMapStore()
+
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+	nr.Setup(srv)
+	nr.UnsubscribeRedirectURL = testUrl
+
+	req, err := http.NewRequest("GET", common.UnsubscribeEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, testNewsletter)
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	time.Sleep(10 * time.Nanosecond)
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+}
+
+func TestUnsubscribeUnsubscribed(t *testing.T) {
+	srv := http.NewServeMux()
+
+	store := db.NewSubscribersMapStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+
+	s, _ := store.GetSubscriber(testNewsletter, testEmail)
+	s.UnsubscribedAt = common.JSONTime(s.CreatedAt.Time().Add(1 * time.Second))
+	if !s.Unsubscribed() {
+		t.Errorf("Unsubscribed() is not updated")
+	}
+
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+	nr.Setup(srv)
+	nr.UnsubscribeRedirectURL = testUrl
+
+	req, err := http.NewRequest("GET", common.UnsubscribeEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, testNewsletter)
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	time.Sleep(10 * time.Nanosecond)
+	srv.ServeHTTP(w, req)
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Errorf("Unexpected status code %d", resp.StatusCode)
+	}
+
+	l, err := resp.Location()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l.String() != testUrl {
+		t.Errorf("Path does not match. expected=%v actual=%v", l.Path, testUrl)
+	}
+}
+
+func TestConfirmUnsubscribed(t *testing.T) {
+	srv := http.NewServeMux()
+
+	store := db.NewSubscribersMapStore()
+	store.AddSubscriber(testNewsletter, testEmail, testName)
+	s, _ := store.GetSubscriber(testNewsletter, testEmail)
+	s.UnsubscribedAt = common.JSONTime(s.CreatedAt.Time().Add(1 * time.Second))
+	if !s.Unsubscribed() {
+		t.Errorf("Unsubscribed() is not updated")
+	}
+
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+	nr.Setup(srv)
+	nr.UnsubscribeRedirectURL = testUrl
+
+	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, testNewsletter)
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	time.Sleep(10 * time.Nanosecond)
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusFound {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+
+	l, err := resp.Location()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if l.String() != testUrl {
+		t.Errorf("Path does not match. expected=%v actual=%v", l.Path, testUrl)
+	}
+
+	i, _ := store.GetSubscriber(testNewsletter, testEmail)
+	if i.Confirmed() {
+		t.Errorf("Confirm time was updated. created=%v confirm=%v", i.CreatedAt, i.ConfirmedAt)
+	}
+}
+
+func TestConfirmMissing(t *testing.T) {
+	srv := http.NewServeMux()
+	store := db.NewSubscribersMapStore()
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+	nr.Setup(srv)
+	nr.UnsubscribeRedirectURL = testUrl
+
+	req, err := http.NewRequest("GET", common.ConfirmEndpoint, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	q := req.URL.Query()
+	q.Add(common.ParamNewsletter, testNewsletter)
+	q.Add(common.ParamToken, common.Sign(secret, testEmail))
+	req.URL.RawQuery = q.Encode()
+
+	w := httptest.NewRecorder()
+	time.Sleep(10 * time.Nanosecond)
+	srv.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		body, _ := ioutil.ReadAll(resp.Body)
+		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
+	}
+
+	if store.Count() != 0 {
+		t.Errorf("Wrong count in store: %v", store.Count())
 	}
 }

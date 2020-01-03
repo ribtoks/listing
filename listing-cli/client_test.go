@@ -31,6 +31,10 @@ type FailingSubscriberStore struct{}
 
 var _ common.SubscribersStore = (*FailingSubscriberStore)(nil)
 
+func (s *FailingSubscriberStore) GetSubscriber(newsletter, email string) (*common.Subscriber, error) {
+	return nil, errFromFailingStore
+}
+
 func (s *FailingSubscriberStore) AddSubscriber(newsletter, email, name string) error {
 	return errFromFailingStore
 }

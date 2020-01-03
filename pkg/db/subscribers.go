@@ -16,8 +16,10 @@ import (
 )
 
 var (
-	incorrectTime  = common.JSONTime(time.Unix(1, 1))
-	errChunkTooBig = errors.New("Chunk of data contains more than allowed 25 items")
+	incorrectTime             = common.JSONTime(time.Unix(1, 1))
+	errChunkTooBig            = errors.New("Chunk of data contains more than allowed 25 items")
+	errResultIsNil            = errors.New("Result is nil")
+	errSubscriberDoesNotExist = errors.New("Subscriber does not exist")
 )
 
 const (
@@ -39,6 +41,37 @@ type SubscribersDynamoDB struct {
 
 // make sure SubscribersDynamoDB implements interface
 var _ common.SubscribersStore = (*SubscribersDynamoDB)(nil)
+
+func (s *SubscribersDynamoDB) GetSubscriber(newsletter, email string) (*common.Subscriber, error) {
+	input := &dynamodb.GetItemInput{
+		TableName: aws.String(s.TableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"newsletter": &dynamodb.AttributeValue{
+				S: &newsletter,
+			},
+			"email": &dynamodb.AttributeValue{
+				S: &email,
+			},
+		},
+	}
+
+	result, err := s.Client.GetItem(input)
+	if err != nil {
+		return nil, err
+	}
+
+	if result.Item == nil {
+		return nil, errResultIsNil
+	}
+
+	cs := new(common.Subscriber)
+	err = dynamodbattribute.UnmarshalMap(result.Item, cs)
+	if err != nil {
+		return nil, err
+	}
+
+	return cs, nil
+}
 
 func (s *SubscribersDynamoDB) AddSubscriber(newsletter, email, name string) error {
 	i, err := dynamodbattribute.MarshalMap(common.Subscriber{
@@ -305,7 +338,7 @@ func (s *SubscribersMapStore) GetSubscriber(newsletter, email string) (*common.S
 	key := s.key(newsletter, email)
 	sr, ok := s.items[key]
 	if !ok {
-		return nil, errors.New("Subscriber does not exist")
+		return nil, errSubscriberDoesNotExist
 	}
 	return sr, nil
 }
@@ -313,7 +346,7 @@ func (s *SubscribersMapStore) GetSubscriber(newsletter, email string) (*common.S
 func (s *SubscribersMapStore) AddSubscriber(newsletter, email, name string) error {
 	key := s.key(newsletter, email)
 	if _, ok := s.items[key]; ok {
-		return errors.New("Subscriber already exists")
+		log.Printf("Subscriber already exists. email=%v newsletter=%v", email, newsletter)
 	}
 
 	s.items[key] = &common.Subscriber{
@@ -332,7 +365,7 @@ func (s *SubscribersMapStore) RemoveSubscriber(newsletter, email string) error {
 		i.UnsubscribedAt = common.JsonTimeNow()
 		return nil
 	}
-	return errors.New("Subscriber does not exist")
+	return errSubscriberDoesNotExist
 }
 
 func (s *SubscribersMapStore) DeleteSubscribers(keys []*common.SubscriberKey) error {
@@ -365,5 +398,5 @@ func (s *SubscribersMapStore) ConfirmSubscriber(newsletter, email string) error 
 		i.ConfirmedAt = common.JsonTimeNow()
 		return nil
 	}
-	return errors.New("Subscriber does not exist")
+	return errSubscriberDoesNotExist
 }

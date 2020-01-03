@@ -201,34 +201,48 @@ func (nr *NewsletterResource) serveSubscribers(w http.ResponseWriter, r *http.Re
 	}
 }
 
+func (nr *NewsletterResource) validate(newsletter, email string) bool {
+	err := checkmail.ValidateFormat(email)
+	if err != nil {
+		log.Printf("Failed to validate email. value=%q err=%q", email, err)
+		return false
+	}
+
+	if !nr.isValidNewsletter(newsletter) {
+		log.Printf("Invalid newsletter. value=%v", newsletter)
+		return false
+	}
+
+	return true
+}
+
 func (nr *NewsletterResource) subscribe(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxSubscribeBodySize)
 	err := r.ParseForm()
 	if err != nil {
 		log.Printf("Failed to parse form. err=%v", err)
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
 	}
 
 	newsletter := r.FormValue(common.ParamNewsletter)
 	email := r.FormValue(common.ParamEmail)
 
-	err = checkmail.ValidateFormat(email)
-	if err != nil {
-		log.Printf("Failed to validate email. value=%q err=%q", email, err)
+	if ok := nr.validate(newsletter, email); !ok {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	if !nr.isValidNewsletter(newsletter) {
-		log.Printf("Invalid newsletter. value=%v", newsletter)
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
+	if s, err := nr.Subscribers.GetSubscriber(newsletter, email); err == nil {
+		log.Printf("Subscriber already exists. email=%v newsletter=%v", email, newsletter)
+		if s.Confirmed() && !s.Unsubscribed() {
+			log.Printf("Email is already confirmed. email=%v newsletter=%v confirmed_at=%v", email, newsletter, s.ConfirmedAt.Time())
+			w.Header().Set("Location", nr.ConfirmRedirectURL)
+			http.Redirect(w, r, nr.ConfirmRedirectURL, http.StatusFound)
+			return
+		}
 	}
 
 	// name is optional
 	name := strings.TrimSpace(r.FormValue(common.ParamName))
-
 	err = nr.Subscribers.AddSubscriber(newsletter, email, name)
 	if err != nil {
 		log.Printf("Failed to add subscription. email=%q newsletter=%q name=%v err=%v", email, newsletter, name, err)
@@ -291,6 +305,19 @@ func (nr *NewsletterResource) confirm(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		log.Printf("Failed to unsign token. value=%q", subscribeToken)
 		http.Error(w, "Invalid subscribe token", http.StatusBadRequest)
+		return
+	}
+
+	if s, err := nr.Subscribers.GetSubscriber(newsletter, email); err == nil {
+		if s.Unsubscribed() {
+			log.Printf("Subscriber has already unsubscribed. newsletter=%v email=%v", newsletter, email)
+			w.Header().Set("Location", nr.UnsubscribeRedirectURL)
+			http.Redirect(w, r, nr.UnsubscribeRedirectURL, http.StatusFound)
+			return
+		}
+	} else {
+		log.Printf("Subscriber cannot be found. newsletter=%v email=%v", newsletter, email)
+		http.Error(w, "Error confirming subscription", http.StatusInternalServerError)
 		return
 	}
 

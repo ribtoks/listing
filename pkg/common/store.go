@@ -8,6 +8,7 @@ type SubscribersStore interface {
 	AddSubscribers(subscribers []*Subscriber) error
 	DeleteSubscribers(keys []*SubscriberKey) error
 	ConfirmSubscriber(newsletter, email string) error
+	GetSubscriber(newsletter, email string) (*Subscriber, error)
 }
 
 // Mailer is an interface for sending confirmation emails for subscriptions
