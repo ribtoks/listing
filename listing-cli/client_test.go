@@ -309,12 +309,12 @@ func TestUnsubscribe(t *testing.T) {
 	srv, cli := NewTestClient(nr, p)
 	defer srv.Close()
 
+	time.Sleep(1 * time.Millisecond)
+
 	err := cli.unsubscribe(testEmail, testNewsletter)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	time.Sleep(1 * time.Millisecond)
 
 	if store.Count() != 1 {
 		t.Errorf("Unexpected number of subscribers: %v", store.Count())
