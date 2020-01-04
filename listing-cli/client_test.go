@@ -228,8 +228,7 @@ func TestExportAllSubscribers(t *testing.T) {
 	}
 }
 
-func TestSubscribeDryRun(t *testing.T) {
-	store := db.NewSubscribersMapStore()
+func SubscribeSuite(t *testing.T, store common.SubscribersStore, dryRun bool) {
 	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
@@ -237,41 +236,38 @@ func TestSubscribeDryRun(t *testing.T) {
 	srv, cli := NewTestClient(nr, p)
 	defer srv.Close()
 
-	cli.dryRun = true
+	cli.dryRun = dryRun
 	err := cli.subscribe(testEmail, testNewsletter, testName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if store.Count() != 0 {
-		t.Errorf("Unexpected number of subscribers: %v", store.Count())
+	expectedCount := 1
+	if dryRun {
+		expectedCount = 0
 	}
+
+	ss, _ := store.Subscribers(testNewsletter)
+	if len(ss) != expectedCount {
+		t.Errorf("Unexpected number of subscribers. count=%v expected=%v", len(ss), expectedCount)
+	}
+}
+
+func TestSubscribeDryRun(t *testing.T) {
+	store := db.NewSubscribersMapStore()
+	SubscribeSuite(t, store, true /*dry run*/)
 }
 
 func TestSubscribe(t *testing.T) {
 	store := db.NewSubscribersMapStore()
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
-	nr.AddNewsletters([]string{testNewsletter})
-
-	p := NewRawTestPrinter()
-	srv, cli := NewTestClient(nr, p)
-	defer srv.Close()
-
-	err := cli.subscribe(testEmail, testNewsletter, testName)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if store.Count() != 1 {
-		t.Errorf("Unexpected number of subscribers: %v", store.Count())
-	}
+	SubscribeSuite(t, store, false /*dry run*/)
 
 	if _, err := store.GetSubscriber(testNewsletter, testEmail); err != nil {
 		t.Errorf("Subscriber is not added to the store")
 	}
 }
 
-func TestUnsubscribeDryRun(t *testing.T) {
+func UnsubscribeSuite(t *testing.T, dryRun bool) {
 	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
@@ -282,7 +278,11 @@ func TestUnsubscribeDryRun(t *testing.T) {
 	srv, cli := NewTestClient(nr, p)
 	defer srv.Close()
 
-	cli.dryRun = true
+	if !dryRun {
+		time.Sleep(1 * time.Millisecond)
+	}
+
+	cli.dryRun = dryRun
 	err := cli.unsubscribe(testEmail, testNewsletter)
 	if err != nil {
 		t.Fatal(err)
@@ -293,37 +293,19 @@ func TestUnsubscribeDryRun(t *testing.T) {
 	}
 
 	i, _ := store.GetSubscriber(testNewsletter, testEmail)
-	if i.Unsubscribed() {
-		t.Errorf("Subscriber was unsubscribed")
+	// if dry run, should NOT be unsubscribed
+	expected := !dryRun
+	if i.Unsubscribed() != expected {
+		t.Errorf("Unexpected unsubscribe state. created_at=%v unsubscribed_at=%v unsubscribed=%v expected=%v", i.CreatedAt, i.UnsubscribedAt, i.Unsubscribed(), expected)
 	}
 }
 
+func TestUnsubscribeDryRun(t *testing.T) {
+	UnsubscribeSuite(t, true /*dry run*/)
+}
+
 func TestUnsubscribe(t *testing.T) {
-	store := db.NewSubscribersMapStore()
-	store.AddSubscriber(testNewsletter, testEmail, testName)
-
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
-	nr.AddNewsletters([]string{testNewsletter})
-
-	p := NewRawTestPrinter()
-	srv, cli := NewTestClient(nr, p)
-	defer srv.Close()
-
-	time.Sleep(1 * time.Millisecond)
-
-	err := cli.unsubscribe(testEmail, testNewsletter)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if store.Count() != 1 {
-		t.Errorf("Unexpected number of subscribers: %v", store.Count())
-	}
-
-	i, _ := store.GetSubscriber(testNewsletter, testEmail)
-	if !i.Unsubscribed() {
-		t.Errorf("Subscriber was not unsubscribed. created_at=%v unsubscribed_at=%v", i.CreatedAt, i.UnsubscribedAt)
-	}
+	UnsubscribeSuite(t, false /*dry run*/)
 }
 
 func TestExportEmptyNewsletter(t *testing.T) {
@@ -365,7 +347,7 @@ func TestExportDryRun(t *testing.T) {
 	}
 }
 
-func TestExportSubscribersWithComplaints(t *testing.T) {
+func ExportSubscribersComplaintsSuite(t *testing.T, p Printer, ignoreComplaints bool) {
 	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
@@ -379,17 +361,22 @@ func TestExportSubscribersWithComplaints(t *testing.T) {
 	nr := NewTestResource(store, complaints)
 	nr.AddNewsletters([]string{testNewsletter})
 
-	p := NewRawTestPrinter()
 	srv, cli := NewTestClient(nr, p)
 	defer srv.Close()
 
+	cli.ignoreComplaints = ignoreComplaints
 	err := cli.export(testNewsletter)
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestExportSubscribersWithComplaints(t *testing.T) {
+	p := NewRawTestPrinter()
+	ExportSubscribersComplaintsSuite(t, p, false /*ignore complaints*/)
 
 	if len(p.subscribers) != 1 {
-		t.Errorf("Unexpected number of subscribers: %v", len(p.subscribers))
+		t.Errorf("Unexpected number of subscribers. actual=%v", len(p.subscribers))
 	}
 
 	if p.subscribers[0].Email != "email2@domain.com" {
@@ -398,31 +385,10 @@ func TestExportSubscribersWithComplaints(t *testing.T) {
 }
 
 func TestExportSubscribersWithoutComplaints(t *testing.T) {
-	store := db.NewSubscribersMapStore()
-	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
-	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
-	store.AddSubscriber(testNewsletter, "email3@domain.com", testName)
-
-	complaints := db.NewNotificationsMapStore()
-	complaints.AddBounce("email1@domain.com", "no-reply@newsletter.com", false /*is transient*/)
-	complaints.AddBounce("email2@domain.com", "no-reply@newsletter.com", true /*is transient*/)
-	complaints.AddComplaint("email3@domain.com", "no-reply@newsletter.com")
-
-	nr := NewTestResource(store, complaints)
-	nr.AddNewsletters([]string{testNewsletter})
-
 	p := NewRawTestPrinter()
-	srv, cli := NewTestClient(nr, p)
-	defer srv.Close()
-
-	cli.ignoreComplaints = true
-	err := cli.export(testNewsletter)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	ExportSubscribersComplaintsSuite(t, p, true /*ignore complaints*/)
 	if len(p.subscribers) != 3 {
-		t.Errorf("Unexpected number of subscribers: %v", len(p.subscribers))
+		t.Errorf("Unexpected number of subscribers. actual=%v", len(p.subscribers))
 	}
 }
 
@@ -492,7 +458,7 @@ func TestUnsubscribeErrors(t *testing.T) {
 	}
 }
 
-func TestImportSubscribers(t *testing.T) {
+func ImportSubscribersSuite(t *testing.T, dryRun bool) {
 	store := db.NewSubscribersMapStore()
 	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
@@ -526,14 +492,27 @@ func TestImportSubscribers(t *testing.T) {
   }
 ]`
 
-	err := cli.importData([]byte(data))
+	cli.dryRun = dryRun
+	err := cli.importSubscribers([]byte(data))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if store.Count() != 3 {
-		t.Errorf("Wrong number of items in store: %v", store.Count())
+	expectedCount := 3
+	if dryRun {
+		expectedCount = 0
 	}
+	if store.Count() != expectedCount {
+		t.Errorf("Wrong number of items in store. actual=%v expected=%v dry_run=%v", store.Count(), expectedCount, dryRun)
+	}
+}
+
+func TestImportSubscribers(t *testing.T) {
+	ImportSubscribersSuite(t, false /*dry run*/)
+}
+
+func TestImportSubscribersDryRun(t *testing.T) {
+	ImportSubscribersSuite(t, true /*dry run*/)
 }
 
 func TestImportSubscribersMalformedJson(t *testing.T) {
@@ -560,8 +539,68 @@ func TestImportSubscribersMalformedJson(t *testing.T) {
     "confirmed_at": "2019-12-29T01:36:52Z",
 `
 
-	err := cli.importData([]byte(data))
+	err := cli.importSubscribers([]byte(data))
 	if err == nil {
 		t.Errorf("Import finished successfully")
 	}
+}
+
+func DeleteSubscribersSuite(t *testing.T, dryRun bool) {
+	store := db.NewSubscribersMapStore()
+	store.AddSubscriber(testNewsletter, "email7@domain.com", testName)
+	store.AddSubscriber(testNewsletter, "email8@domain.com", testName)
+	store.AddSubscriber(testNewsletter, "foo@bar.com", testName)
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	srv, cli := NewTestClient(nr, NewRawTestPrinter())
+	defer srv.Close()
+
+	data := `[{
+    "name": "JohnSmith",
+    "newsletter": "testnewsletter",
+    "email": "email7@domain.com",
+    "created_at": "2019-12-28T02:42:23Z",
+    "unsubscribed_at": "1970-01-01T00:00:01Z",
+    "confirmed_at": "2019-12-26T18:50:12Z"
+  },
+  {
+    "name": "",
+    "newsletter": "testnewsletter",
+    "email": "email8@domain.com",
+    "created_at": "2019-12-28T02:42:23Z",
+    "unsubscribed_at": "1970-01-01T00:00:01Z",
+    "confirmed_at": "2019-12-26T18:50:12Z"
+  },
+  {
+    "name": "Foo Bar",
+    "newsletter": "testnewsletter",
+    "email": "foo@bar.com",
+    "created_at": "2019-12-29T01:24:11Z",
+    "unsubscribed_at": "1970-01-01T00:00:01Z",
+    "confirmed_at": "2019-12-29T01:36:52Z"
+  }
+]`
+
+	cli.dryRun = dryRun
+	err := cli.deleteSubscribers([]byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedCount := 0
+	if dryRun {
+		expectedCount = 3
+	}
+	if store.Count() != expectedCount {
+		t.Errorf("Wrong number of items in store. actual=%v expected=%v dry_run=%v", store.Count(), expectedCount, dryRun)
+	}
+}
+
+func TestDeleteSubscribers(t *testing.T) {
+	DeleteSubscribersSuite(t, false /*dry run*/)
+}
+
+func TestDeleteSubscribersDryRun(t *testing.T) {
+	DeleteSubscribersSuite(t, true /*dry run*/)
 }

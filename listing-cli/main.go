@@ -90,7 +90,12 @@ func main() {
 	case modeImport:
 		{
 			bytes, _ := ioutil.ReadAll(os.Stdin)
-			err = client.importData(bytes)
+			err = client.importSubscribers(bytes)
+		}
+	case modeDelete:
+		{
+			bytes, _ := ioutil.ReadAll(os.Stdin)
+			err = client.deleteSubscribers(bytes)
 		}
 	default:
 		fmt.Printf("Mode %v is not supported yet", *modeFlag)

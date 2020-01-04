@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/ribtoks/listing/pkg/common"
@@ -19,10 +20,11 @@ func (c *listingClient) parseSubscribers(data []byte) ([]*common.Subscriber, err
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("Parsed subscribers. count=%v", len(subscribers))
 	return subscribers, nil
 }
 
-func (c *listingClient) preparePayload(data []byte) ([]byte, error) {
+func (c *listingClient) prepareImportPayload(data []byte) ([]byte, error) {
 	subscribers, err := c.parseSubscribers(data)
 	if err != nil {
 		return nil, err
@@ -51,15 +53,19 @@ func (c *listingClient) sendImportRequest(endpoint string, payload []byte) error
 	return nil
 }
 
-func (c *listingClient) importData(data []byte) error {
+func (c *listingClient) importSubscribers(data []byte) error {
 	endpoint, err := c.importURL()
 	if err != nil {
 		return err
 	}
-	payload, err := c.preparePayload(data)
+	payload, err := c.prepareImportPayload(data)
 	if err != nil {
 		return err
 	}
-
+	log.Printf("About to send import request. bytes=%v", len(payload))
+	if c.dryRun {
+		log.Println("Dry run mode. Exiting...")
+		return nil
+	}
 	return c.sendImportRequest(endpoint, payload)
 }

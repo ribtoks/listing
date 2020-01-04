@@ -25,8 +25,11 @@ functions:
   # "main" entry point into this application responsible for 
   # collecting subscribers, storing them in the table and sending
   # confirmation emails to them
-  listing:
+  handler:
     handler: bin/listing
+    package:
+      include:
+        - ./bin/listing
     events:
       - http:
           path: subscribe
@@ -96,6 +99,9 @@ functions:
   # lambda used to handle bounce and complaint notifications from SES
   sesnotify:
     handler: bin/sesnotify
+    package:
+      include:
+        - ./bin/sesnotify
     events:
       - sns:
           topicName: ${self:custom.snsTopicName}

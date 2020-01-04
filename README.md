@@ -50,7 +50,40 @@ Bounces and Complaints are stored in additional DynamoDB table. This table is ma
 
 Everything else (confirmation, unsubscribe) will be handled in the emails or automatically.
 
-The only thing left to do is to send periodic emails to your subscription list.
+In order to operate *Listing* you can use `listing-cli` command line application that allows you to export and import subscribers, subscribe/unsubscribe single email and other actions.
+
+```
+  -auth-token string
+    	Auth token for admin access
+  -dry-run
+    	Simulate selected action
+  -email string
+    	Email for subscribe|unsubscribe
+  -format string
+    	Ouput format of subscribers: csv|tsv|table|raw|yaml (default "table")
+  -help
+    	Print help
+  -ignore-complaints
+    	Ignore bounces and complaints for export
+  -l string
+    	Absolute path to log file (default "listing-cli.log")
+  -mode string
+    	Execution mode: subscribe|unsubscribe|export|import|delete
+  -name string
+    	(optional) Name for subscribe
+  -newsletter string
+    	Newsletter for subscribe|unsubscribe
+  -no-unconfirmed
+    	Do not export unconfirmed emails
+  -no-unsubscribed
+    	Do not export unsubscribed emails
+  -secret string
+    	Secret for email salt
+  -stdout
+    	Log to stdout and to logfile
+  -url string
+    	Base URL to the listing API
+```
 
 ## How to avoid vendor lock
 
