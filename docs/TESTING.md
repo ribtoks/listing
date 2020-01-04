@@ -1,3 +1,5 @@
+*Listing* serves couple of ordinary http endpoints and you can do all actions using `curl`, however, we provide `listing-cli` command line application that simplifies many actions and automates others.
+
 ## Subscribing to a newsletter
 
 `./listing-cli -mode subscribe -email foo@bar.com -newsletter NewsletterName -url https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev`
@@ -33,6 +35,10 @@ OR
 `curl -v -u :your-api-token -X PUT https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev/subscribers -H "Content-Type: application/json" --data-binary "@scripts/add_subscribers.json"`
 
 ## Deleting subscribers
+
+`cat scripts/remove_subscribers.json | ./listing-cli/listing-cli -auth-token your-api-token -mode delete -url https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev`
+
+OR
 
 `curl -v -u :your-api-token -X DELETE https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev/subscribers -H "Content-Type: application/json" --data-binary "@scripts/remove_subscribers.json"`
 

@@ -52,38 +52,7 @@ Everything else (confirmation, unsubscribe) will be handled in the emails or aut
 
 In order to operate *Listing* you can use `listing-cli` command line application that allows you to export and import subscribers, subscribe/unsubscribe single email and other actions.
 
-```
-  -auth-token string
-    	Auth token for admin access
-  -dry-run
-    	Simulate selected action
-  -email string
-    	Email for subscribe|unsubscribe
-  -format string
-    	Ouput format of subscribers: csv|tsv|table|raw|yaml (default "table")
-  -help
-    	Print help
-  -ignore-complaints
-    	Ignore bounces and complaints for export
-  -l string
-    	Absolute path to log file (default "listing-cli.log")
-  -mode string
-    	Execution mode: subscribe|unsubscribe|export|import|delete
-  -name string
-    	(optional) Name for subscribe
-  -newsletter string
-    	Newsletter for subscribe|unsubscribe
-  -no-unconfirmed
-    	Do not export unconfirmed emails
-  -no-unsubscribed
-    	Do not export unsubscribed emails
-  -secret string
-    	Secret for email salt
-  -stdout
-    	Log to stdout and to logfile
-  -url string
-    	Base URL to the listing API
-```
+See [full documentation](https://github.com/ribtoks/listing/blob/master/docs/CLI.md)
 
 ## How to avoid vendor lock
 
