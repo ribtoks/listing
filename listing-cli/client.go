@@ -30,6 +30,14 @@ func (c *listingClient) endpoint(e string) string {
 	return baseURL
 }
 
+func (c *listingClient) importURL() (string, error) {
+	u, err := url.Parse(c.endpoint(common.SubscribersEndpoint))
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}
+
 func (c *listingClient) subscribersURL(newsletter string) (string, error) {
 	u, err := url.Parse(c.endpoint(common.SubscribersEndpoint))
 	if err != nil {

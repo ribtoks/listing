@@ -491,3 +491,77 @@ func TestUnsubscribeErrors(t *testing.T) {
 		t.Fatal("Unsubscribed with empty newsletter")
 	}
 }
+
+func TestImportSubscribers(t *testing.T) {
+	store := db.NewSubscribersMapStore()
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	srv, cli := NewTestClient(nr, NewRawTestPrinter())
+	defer srv.Close()
+
+	data := `[{
+    "name": "JohnSmith",
+    "newsletter": "testnewsletter",
+    "email": "email7@domain.com",
+    "created_at": "2019-12-28T02:42:23Z",
+    "unsubscribed_at": "1970-01-01T00:00:01Z",
+    "confirmed_at": "2019-12-26T18:50:12Z"
+  },
+  {
+    "name": "",
+    "newsletter": "testnewsletter",
+    "email": "email8@domain.com",
+    "created_at": "2019-12-28T02:42:23Z",
+    "unsubscribed_at": "1970-01-01T00:00:01Z",
+    "confirmed_at": "2019-12-26T18:50:12Z"
+  },
+  {
+    "name": "Foo Bar",
+    "newsletter": "testnewsletter",
+    "email": "foo@bar.com",
+    "created_at": "2019-12-29T01:24:11Z",
+    "unsubscribed_at": "1970-01-01T00:00:01Z",
+    "confirmed_at": "2019-12-29T01:36:52Z"
+  }
+]`
+
+	err := cli.importData([]byte(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if store.Count() != 3 {
+		t.Errorf("Wrong number of items in store: %v", store.Count())
+	}
+}
+
+func TestImportSubscribersMalformedJson(t *testing.T) {
+	store := db.NewSubscribersMapStore()
+	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr.AddNewsletters([]string{testNewsletter})
+
+	srv, cli := NewTestClient(nr, NewRawTestPrinter())
+	defer srv.Close()
+
+	data := `[{
+    "name": "JohnSmith",
+    "newsletter": "testnewsletter"
+    "email": "email7@domain.com"
+    "created_at": "2019-12-28T02:42:23Z",
+    "unsubscribed_at": "1970-01-01T00:00:01Z",
+    "confirmed_at": "2019-12-26T18:50:12Z"
+  }  {
+    "name": "Foo Bar",
+    "newsletter": "testnewsletter",
+    "email": "foo@bar.com",
+    "created_at": "2019-12-29T01:24:11Z",
+    "unsubscribed_at": "1970-01-01T00:00:01Z",
+    "confirmed_at": "2019-12-29T01:36:52Z",
+`
+
+	err := cli.importData([]byte(data))
+	if err == nil {
+		t.Errorf("Import finished successfully")
+	}
+}

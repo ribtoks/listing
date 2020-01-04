@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -85,6 +86,11 @@ func main() {
 	case modeUnsubscribe:
 		{
 			err = client.unsubscribe(*emailFlag, *newsletterFlag)
+		}
+	case modeImport:
+		{
+			bytes, _ := ioutil.ReadAll(os.Stdin)
+			err = client.importData(bytes)
 		}
 	default:
 		fmt.Printf("Mode %v is not supported yet", *modeFlag)
