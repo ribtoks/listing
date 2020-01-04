@@ -26,13 +26,13 @@ Self-hosted email marketing solutions one can find today like [tinycampaign](htt
 
 There's also a [MoonMail](https://github.com/MoonMail/MoonMail) which is kind of a good approximation of a better system, but it is too complex to deploy and it tries to solve all problems at the same time as well. And there is almost no documentation since they are interested in selling SaaS version of it.
 
-*Listing* is different. **It focuses only on building subscription list.** It is simple, well documented and easy to install.
+*Listing* is different. **It focuses only on building a subscription list.** It is simple, well documented, tested and easy to install.
 
 As for other functionality, you can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Finding [good](https://github.com/InterNations/antwort) [email](https://github.com/leemunroe/responsive-html-email-template) [templates](https://github.com/mailgun/transactional-email-templates) or building ones using [available](http://mosaico.io/) [tools](https://beefree.io/) is also not a problem. And there are [many](https://github.com/rykov/paperboy) [ways](https://github.com/Circle-gg/thunder-mail) you can send those emails without a need to waste cloud computer resources at all other times.
 
 ### How does it work
 
-*Listing* manages arbitrary amount of subscription lists using few lambda functions and DynamoDB table.
+*Listing* manages arbitrary amount of subscription lists using few lambda functions and a DynamoDB table.
 
 *Listing* uses so-called "double-confirmation" system where user has to confirm it's email even after entering it on your website and pressing "Subscribe" button. The reason is that this is way more reliable in terms of loyal audience building.
 
@@ -52,7 +52,7 @@ Everything else (confirmation, unsubscribe) will be handled in the emails or aut
 
 In order to operate *Listing* you can use `listing-cli` command line application that allows you to export and import subscribers, subscribe/unsubscribe single email and other actions.
 
-See [full documentation](https://github.com/ribtoks/listing/blob/master/docs/CLI.md)
+See [full cli documentation](https://github.com/ribtoks/listing/blob/master/docs/CLI.md)
 
 ## How to avoid vendor lock
 

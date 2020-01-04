@@ -33,11 +33,11 @@ Config file `serverless-db.yml` describes resources that will not be frequently 
 
 `serverless deploy --config serverless-db.yml`
 
-In order to specify stage and region, add parameters `--stage dev --region "us-east-1"`.
+This command will deploy resources to `dev` stage and to `us-east-1` region so if you want to use something else, you have to add parameters `--stage dev --region "us-east-1"`.
 
 ## Deploy API
 
-Config file `serverless-api.yml` contains definitions of lambda functions written in Go. If you are a developer, you may want to redeploy them frequently.
+Config file `serverless-api.yml` contains definitions of lambda functions written in Go. If you are a developer, you may want to redeploy them frequently during development.
 
 You can use `make deploy` to run this step or you can use 2 commands:
 
@@ -46,7 +46,7 @@ make build
 serverless deploy --config serverless-api.yml
 ```
 
-In order to specify stage and region, add parameters `--stage dev --region "us-east-1"`.
+This command will deploy resources to `dev` stage and to `us-east-1` region so if you want to use something else, you have to add parameters `--stage dev --region "us-east-1"`.
 
 ## Configure confirm and redirect URLs
 
@@ -59,4 +59,8 @@ Go to AWS Console UI and in Lambda section find `listing-subscribe` function. Se
 In order to exit "sandbox" mode in AWS SES you need to have a procedure for handling bounces and complaints. *Listing* provides this functionality, but you have to do 1 manual action.
 
 Go to [AWS Console UI and set Bounce and Complaint](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-sns-notifications.html) SNS topic's ARN for your SES domain to the `listing-ses-notifications` topic. You can find it in `SES -> Domains -> (select your domain) -> Notifications`. Arn will be an output of `serverless deploy` command for `serverless-db.yml` config. Example of such ARN: `arn:aws:sns:us-east-1:1234567890:dev-listing-ses-notifications`.
+
+## Configure redirect URLs to your website
+
+Open lambda function properties in the AWS management console and set all `_REDIRECT_URL` variables to the appropriate values that point to your website. You will need to have pages for email confirmation, unsubscribe confirmation etc.
 

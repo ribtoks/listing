@@ -1,4 +1,4 @@
-*Listing* serves couple of ordinary http endpoints and you can do all actions using `curl`, however, we provide `listing-cli` command line application that simplifies many actions and automates others.
+Testing doc describes how to invoke different endpoints of *Listing*. You may want to do that after deployment.
 
 ## Subscribing to a newsletter
 
