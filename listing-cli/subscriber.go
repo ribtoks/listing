@@ -6,7 +6,7 @@ type SubscriberEx struct {
 	Name         string `json:"name" yaml:"name"`
 	Newsletter   string `json:"newsletter" yaml:"newsletter"`
 	Email        string `json:"email" yaml:"email"`
-	Token        string `json:"token" yaml:"toke"`
+	Token        string `json:"token" yaml:"token"`
 	Confirmed    bool   `json:"confirmed" yaml:"confirmed"`
 	Unsubscribed bool   `json:"unsubscribed" yaml:"unsubscribed"`
 }
