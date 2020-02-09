@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/go-gomail/gomail"
 	"github.com/ribtoks/listing/pkg/common"
@@ -21,10 +22,12 @@ var (
 	smtpUsernameFlag = flag.String("user", "", "SMTP username flag")
 	smtpPassFlag     = flag.String("pass", "", "SMTP password flag")
 	subjectFlag      = flag.String("subject", "", "Html campaign subject")
-	fromFlag         = flag.String("from", "", "Sender address")
+	fromEmailFlag    = flag.String("from-email", "", "Sender address")
+	fromNameFlag     = flag.String("from-name", "", "Sender name")
 	htmlTemplateFlag = flag.String("html-template", "", "Path to html email template")
 	txtTemplateFlag  = flag.String("txt-template", "", "Path to text email template")
 	paramsFlag       = flag.String("params", "params.json", "Path to file with common params")
+	workersFlag      = flag.Int("workers", 2, "Number of workers to send emails")
 	listFlag         = flag.String("list", "list.json", "Path to file with email list")
 	rateFlag         = flag.Int("rate", 25, "Emails per second sending rate")
 	dryRunFlag       = flag.Bool("dry-run", false, "Simulate selected action")
@@ -35,7 +38,9 @@ var (
 )
 
 const (
-	appName = "listing-send"
+	appName           = "listing-send"
+	smtpRetryAttempts = 3
+	smtpRetrySleep    = 1 * time.Second
 )
 
 func main() {
@@ -70,26 +75,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sender, err := createSender()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer sender.Close()
-
 	c := &campaign{
 		htmlTemplate: htmlTemplate,
 		textTemplate: textTemplate,
 		params:       params,
 		subscribers:  subscribers,
 		subject:      *subjectFlag,
-		from:         *fromFlag,
+		fromEmail:    *fromEmailFlag,
+		fromName:     *fromNameFlag,
 		rate:         *rateFlag,
 		dryRun:       *dryRunFlag,
 		messages:     make(chan *gomail.Message, 10),
 		waiter:       &sync.WaitGroup{},
+		workersCount: *workersFlag,
 	}
 
-	c.send(sender)
+	c.send()
 }
 
 func readSubscribers(filepath string) ([]*common.SubscriberEx, error) {
@@ -163,14 +164,21 @@ func createSender() (sender gomail.SendCloser, err error) {
 	if *dryRunFlag {
 		sender = &dryRunSender{out: *outFlag}
 	} else {
-		// Initialize dialer from configuration
 		dialer, err := smtpDialer(*smtpServerFlag, *smtpUsernameFlag, *smtpPassFlag)
 		if err != nil {
 			return nil, err
 		}
-		sender, err = dialer.Dial()
-		if err != nil {
-			return nil, err
+
+		for i := 0; i < smtpRetryAttempts; i++ {
+			sender, err = dialer.Dial()
+			if err == nil {
+				log.Printf("Dialed to SMTP. server=%v", *smtpServerFlag)
+				break
+			} else {
+				log.Printf("Failed to dial SMTP. err=%v attempt=%v", err, i)
+				log.Printf("Sleeping before retry. interval=%v", smtpRetrySleep)
+				time.Sleep(smtpRetrySleep)
+			}
 		}
 	}
 	return
