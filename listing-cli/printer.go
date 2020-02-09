@@ -19,7 +19,7 @@ type Printer interface {
 	Render() error
 }
 
-func structToMap(cs *SubscriberEx) map[string]string {
+func structToMap(cs *common.SubscriberEx) map[string]string {
 	values := make(map[string]string)
 	s := reflect.ValueOf(cs).Elem()
 	typeOfT := s.Type()
@@ -68,7 +68,7 @@ type TablePrinter struct {
 }
 
 func SubscriberHeaders() []string {
-	statType := reflect.TypeOf(SubscriberEx{})
+	statType := reflect.TypeOf(common.SubscriberEx{})
 	header := make([]string, 0, statType.NumField())
 	for i := 0; i < statType.NumField(); i++ {
 		field := statType.Field(i)
@@ -107,7 +107,7 @@ func NewTSVPrinter(secret string) *TablePrinter {
 }
 
 func (tr *TablePrinter) Append(s *common.Subscriber) {
-	se := NewSubscriberEx(s, tr.secret)
+	se := common.NewSubscriberEx(s, tr.secret)
 	m := structToMap(se)
 	row := mapValues(m, tr.fields)
 	tr.table.Append(row)
@@ -135,7 +135,7 @@ func NewCSVPrinter(secret string) *CSVPrinter {
 }
 
 func (cr *CSVPrinter) Append(s *common.Subscriber) {
-	se := NewSubscriberEx(s, cr.secret)
+	se := common.NewSubscriberEx(s, cr.secret)
 	m := structToMap(se)
 	row := mapValues(m, cr.fields)
 	cr.w.Write(row)
@@ -143,6 +143,32 @@ func (cr *CSVPrinter) Append(s *common.Subscriber) {
 
 func (cr *CSVPrinter) Render() error {
 	cr.w.Flush()
+	return nil
+}
+
+type JsonPrinter struct {
+	subscribers []*common.SubscriberEx
+	secret      string
+}
+
+func NewJsonPrinter(secret string) *JsonPrinter {
+	rp := &JsonPrinter{
+		subscribers: make([]*common.SubscriberEx, 0),
+		secret:      secret,
+	}
+	return rp
+}
+
+func (rp *JsonPrinter) Append(s *common.Subscriber) {
+	rp.subscribers = append(rp.subscribers, common.NewSubscriberEx(s, rp.secret))
+}
+
+func (rp *JsonPrinter) Render() error {
+	data, err := json.MarshalIndent(rp.subscribers, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
 	return nil
 }
 
@@ -172,19 +198,19 @@ func (rp *RawPrinter) Render() error {
 
 type YamlPrinter struct {
 	secret      string
-	subscribers []*SubscriberEx
+	subscribers []*common.SubscriberEx
 }
 
 func NewYamlPrinter(secret string) *YamlPrinter {
 	yp := &YamlPrinter{
 		secret:      secret,
-		subscribers: make([]*SubscriberEx, 0),
+		subscribers: make([]*common.SubscriberEx, 0),
 	}
 	return yp
 }
 
 func (yp *YamlPrinter) Append(s *common.Subscriber) {
-	se := NewSubscriberEx(s, yp.secret)
+	se := common.NewSubscriberEx(s, yp.secret)
 	yp.subscribers = append(yp.subscribers, se)
 }
 

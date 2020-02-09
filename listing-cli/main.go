@@ -182,6 +182,8 @@ func NewPrinter() Printer {
 		return NewTSVPrinter(*secretFlag)
 	case "raw":
 		return NewRawPrinter()
+	case "json":
+		return NewJsonPrinter(*secretFlag)
 	case "yaml":
 		return NewYamlPrinter(*secretFlag)
 	default:
