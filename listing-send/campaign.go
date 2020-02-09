@@ -37,7 +37,7 @@ func (c *campaign) send() {
 	for i := 0; i < c.workersCount; i++ {
 		go c.sendMessages(i)
 	}
-	log.Println("Waiting for workers. count=%v", c.workersCount)
+	log.Printf("Waiting for workers. count=%v", c.workersCount)
 	c.waiter.Wait()
 	close(c.messages)
 	log.Println("Finished sending messages")
