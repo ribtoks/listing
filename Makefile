@@ -5,7 +5,8 @@ test:
 
 build:
 	dep ensure -v
-	go build -o listing-cli/listing-cli listing-cli/main.go listing-cli/client.go listing-cli/export.go listing-cli/printer.go listing-cli/subscribe.go listing-cli/subscriber.go listing-cli/complaints.go listing-cli/unsubscribe.go listing-cli/import.go listing-cli/delete.go
+	go build -o listing-cli/listing-cli listing-cli/main.go listing-cli/client.go listing-cli/export.go listing-cli/printer.go listing-cli/subscribe.go listing-cli/complaints.go listing-cli/unsubscribe.go listing-cli/import.go listing-cli/delete.go
+	go build -o listing-send/listing-send listing-send/main.go listing-send/campaign.go listing-send/sender.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/listing listing/main.go listing/email.go listing/confirm_html.go
 	env GOOS=linux go build -ldflags="-s -w" -o bin/sesnotify sesnotify/main.go
 
