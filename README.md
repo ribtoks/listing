@@ -28,7 +28,7 @@ There's also a [MoonMail](https://github.com/MoonMail/MoonMail) which is kind of
 
 *Listing* is different. **It focuses only on building a subscription list.** It is simple, well documented, tested and easy to install.
 
-As for other functionality, you can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Finding [good](https://github.com/InterNations/antwort) [email](https://github.com/leemunroe/responsive-html-email-template) [templates](https://github.com/mailgun/transactional-email-templates) or building ones using [available](http://mosaico.io/) [tools](https://beefree.io/) is also not a problem. And there are [many](https://github.com/rykov/paperboy) [ways](https://github.com/Circle-gg/thunder-mail) you can send those emails without a need to waste cloud computer resources at all other times.
+As for other functionality, you can achieve analytics and A/B testing using systems like [Google Analytics](https://google.com/analytics) or others. Finding [good](https://github.com/InterNations/antwort) [email](https://github.com/leemunroe/responsive-html-email-template) [templates](https://github.com/mailgun/transactional-email-templates) or building ones using [available](http://mosaico.io/) [tools](https://beefree.io/) is also not a problem. And there [are](https://github.com/ribtoks/listing/blob/master/docs/SEND.md) [many](https://github.com/rykov/paperboy) [ways](https://github.com/Circle-gg/thunder-mail) you can send those emails without a need to waste cloud computer resources at all other times.
 
 ### How does it work
 
@@ -52,7 +52,11 @@ Everything else (confirmation, unsubscribe) will be handled in the emails or aut
 
 In order to operate *Listing* you can use `listing-cli` command line application that allows you to export and import subscribers, subscribe/unsubscribe single email and other actions.
 
-See [full cli documentation](https://github.com/ribtoks/listing/blob/master/docs/CLI.md)
+See [full cli documentation](https://github.com/ribtoks/listing/blob/master/docs/CLI.md).
+
+In order to send emails, you can use `listing-send` command line application that allows you to send templated html and text emails to recepients in previously exported list.
+
+See [full send documentation](https://github.com/ribtoks/listing/blob/master/docs/SEND.md).
 
 ## How to avoid vendor lock
 
@@ -62,8 +66,8 @@ See [full cli documentation](https://github.com/ribtoks/listing/blob/master/docs
 
 ## Deployment
 
-See [full documentation](https://github.com/ribtoks/listing/blob/master/docs/DEPLOYMENT.md)
+See [full documentation](https://github.com/ribtoks/listing/blob/master/docs/DEPLOYMENT.md).
 
 ## Testing
 
-See [full documentation](https://github.com/ribtoks/listing/blob/master/docs/TESTING.md)
+See [full documentation](https://github.com/ribtoks/listing/blob/master/docs/TESTING.md).

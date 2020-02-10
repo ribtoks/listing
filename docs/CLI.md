@@ -47,6 +47,8 @@ Here are the supported options.
 
 Use `-format yaml` in order to use *Listing* with [paperboy](https://github.com/rykov/paperboy) and `-format raw` for dump of the subscribers DB.
 
+Use `-format json` in order to use *Listing* with `listing-send`.
+
 ## Examples
 
 ```
