@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"hash/fnv"
 	"html/template"
 	"log"
 	"sync"
@@ -60,6 +61,12 @@ func (c *campaign) generateMessages() {
 	}
 }
 
+func generateID(s *common.SubscriberEx) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s.Newsletter + s.Email))
+	return h.Sum32()
+}
+
 func (c *campaign) renderMessage(m *gomail.Message, s *common.SubscriberEx) error {
 	data, err := json.Marshal(s)
 	if err != nil {
@@ -70,6 +77,7 @@ func (c *campaign) renderMessage(m *gomail.Message, s *common.SubscriberEx) erro
 	if err != nil {
 		return err
 	}
+	recepient["uid"] = generateID(s)
 	ctx := make(map[string]interface{})
 	ctx["Params"] = c.params
 	ctx["Recepient"] = recepient
