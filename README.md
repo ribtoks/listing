@@ -52,9 +52,13 @@ Everything else (confirmation, unsubscribe) will be handled in the emails or aut
 
 In order to operate *Listing* you can use `listing-cli` command line application that allows you to export and import subscribers, subscribe/unsubscribe single email and other actions.
 
+Install cli using: `go get -u github.com/ribtoks/listing/listing-cli`
+
 See [full cli documentation](https://github.com/ribtoks/listing/blob/master/docs/CLI.md).
 
 In order to send emails, you can use `listing-send` command line application that allows you to send templated html and text emails to recepients in previously exported list.
+
+Install send using: `go get -u github.com/ribtoks/listing/listing-send`
 
 See [full send documentation](https://github.com/ribtoks/listing/blob/master/docs/SEND.md).
 
