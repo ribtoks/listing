@@ -38,7 +38,7 @@ type dryRunSender struct {
 func (s *dryRunSender) Send(from string, to []string, msg io.WriterTo) error {
 	var buf bytes.Buffer
 	msg.WriteTo(&buf)
-	ioutil.WriteFile(s.out+to[0], buf.Bytes(), 0644)
+	ioutil.WriteFile(s.out+to[0]+".eml", buf.Bytes(), 0644)
 	return nil
 }
 
