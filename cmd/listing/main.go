@@ -72,7 +72,7 @@ func main() {
 	}
 
 	router := http.NewServeMux()
-	newsletter := &api.NewsletterResource{
+	newsletter = &api.NewsletterResource{
 		ApiToken:               apiToken,
 		Secret:                 secret,
 		SubscribeRedirectURL:   subscribeRedirectUrl,
