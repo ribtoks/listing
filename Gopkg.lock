@@ -121,6 +121,14 @@
   version = "v1.1"
 
 [[projects]]
+  digest = "1:a9ac823421527eaf6566301956cc5ae6dc312f4c0746afc0aa2f23b96f6458bd"
+  name = "github.com/rs/xid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "15d26544def341f036c5f8dca987a4cbe575032c"
+  version = "v1.2.1"
+
+[[projects]]
   branch = "v3"
   digest = "1:fa33d1dde8ce5b0b37c38c767c250a7684ecd385f9dbabe594ea8543e4d55807"
   name = "gopkg.in/alexcesaro/quotedprintable.v3"
@@ -154,6 +162,7 @@
     "github.com/olekukonko/tablewriter",
     "github.com/ribtoks/backoff",
     "github.com/ribtoks/checkmail",
+    "github.com/rs/xid",
     "gopkg.in/yaml.v2",
   ]
   solver-name = "gps-cdcl"

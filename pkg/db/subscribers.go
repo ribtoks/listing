@@ -74,15 +74,17 @@ func (s *SubscribersDynamoDB) GetSubscriber(newsletter, email string) (*common.S
 }
 
 func (s *SubscribersDynamoDB) AddSubscriber(newsletter, email, name string) error {
-	i, err := dynamodbattribute.MarshalMap(common.Subscriber{
+	sr := &common.Subscriber{
 		Name:           name,
 		Newsletter:     newsletter,
 		Email:          email,
 		CreatedAt:      common.JsonTimeNow(),
 		UnsubscribedAt: incorrectTime,
 		ConfirmedAt:    incorrectTime,
-	})
+	}
+	sr.Validate()
 
+	i, err := dynamodbattribute.MarshalMap(sr)
 	if err != nil {
 		return err
 	}
@@ -164,6 +166,8 @@ func (s *SubscribersDynamoDB) AddSubscribersChunk(subscribers []*common.Subscrib
 
 	requests := make([]*dynamodb.WriteRequest, 0, len(subscribers))
 	for _, i := range subscribers {
+		i.Validate()
+
 		attr, err := dynamodbattribute.MarshalMap(i)
 		if err != nil {
 			return err
@@ -349,13 +353,16 @@ func (s *SubscribersMapStore) AddSubscriber(newsletter, email, name string) erro
 		log.Printf("Subscriber already exists. email=%v newsletter=%v", email, newsletter)
 	}
 
-	s.items[key] = &common.Subscriber{
+	sr := &common.Subscriber{
 		Newsletter:     newsletter,
 		Email:          email,
 		CreatedAt:      common.JsonTimeNow(),
 		ConfirmedAt:    incorrectTime,
 		UnsubscribedAt: incorrectTime,
 	}
+	sr.Validate()
+
+	s.items[key] = sr
 	return nil
 }
 
