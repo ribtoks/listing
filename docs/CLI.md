@@ -49,6 +49,8 @@ Use `-format yaml` in order to use *Listing* with [paperboy](https://github.com/
 
 Use `-format json` in order to use *Listing* with `listing-send`.
 
+Use `-format raw` to export subscribers for backup or further import.
+
 ## Examples
 
 ```
@@ -56,5 +58,8 @@ Use `-format json` in order to use *Listing* with `listing-send`.
 ./listing-cli -mode subscribe -email foo@bar.com -newsletter NewsletterName -url https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev
 
 # listing all subscribers
-./listing-cli -auth-token your-token-here -url "https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev" -mode export -newsletter Listing1
+./listing-cli -secret secret-here -auth-token your-token-here -url "https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev" -mode export -newsletter Listing1
+
+# importing subscribers from file
+cat raw_export.json | ./listing-cli -secret secret-here -auth-token your-token-here -url "https://qwerty12345.execute-api.us-east-1.amazonaws.com/dev" -mode import
 ```

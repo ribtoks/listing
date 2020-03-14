@@ -18,8 +18,6 @@ package:
   individually: true
   exclude:
     - ./**
-  include:
-    - ./bin/**
 
 functions:
   # "main" entry point into this application responsible for 
