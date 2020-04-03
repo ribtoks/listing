@@ -2,7 +2,7 @@
 
 
 [[projects]]
-  digest = "1:d37b5cbae31a6d3685931cdb7d355e650a5dcb265dc340b57b6f17158234bd38"
+  digest = "1:ad3a958de5100511e795bc6abd52a039b9538b7e42d7b393af962238aaa584ef"
   name = "github.com/aws/aws-lambda-go"
   packages = [
     "events",
@@ -12,11 +12,11 @@
     "lambdacontext",
   ]
   pruneopts = ""
-  revision = "b5b7267d297de263cc5b61f8c37543daa9c95ffd"
-  version = "v1.13.3"
+  revision = "18b606949c45bc923e421d7ea891d6d02a34f7dd"
+  version = "v1.16.0"
 
 [[projects]]
-  digest = "1:7980af5e19c3739b07cc411ca5d59cb5851a359f6a070348aa23be387e3b8e7e"
+  digest = "1:d678141a3e3af099a46dbf6d79730c7c388f550be9e1b8130d4f5d616c211ee4"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -38,12 +38,15 @@
     "aws/request",
     "aws/session",
     "aws/signer/v4",
+    "internal/context",
     "internal/ini",
     "internal/sdkio",
     "internal/sdkmath",
     "internal/sdkrand",
     "internal/sdkuri",
     "internal/shareddefaults",
+    "internal/strings",
+    "internal/sync/singleflight",
     "private/protocol",
     "private/protocol/json/jsonutil",
     "private/protocol/jsonrpc",
@@ -59,19 +62,19 @@
     "service/sts/stsiface",
   ]
   pruneopts = ""
-  revision = "a1e6946e8014a793d989e64ef5566315010ce898"
-  version = "v1.27.0"
+  revision = "fb3330c1e45cd199c07346d56f6a206f905b6f00"
+  version = "v1.30.3"
 
 [[projects]]
-  digest = "1:12bb9af90be146031ca05e9f3cc86a8bc6718d9ffcda4b9f7589c792eaed1b9e"
+  digest = "1:553343cc3a8c970e995572c6a5445fa6fd0babbb43b6411b43a0daab816b4466"
   name = "github.com/awslabs/aws-lambda-go-api-proxy"
   packages = [
     "core",
     "httpadapter",
   ]
   pruneopts = ""
-  revision = "8214f34905cc0228a70c060f3af3365972a3ce0c"
-  version = "v0.5.0"
+  revision = "9f6f9d2a6cbc7f3d441488125b2811b6ffeeaff0"
+  version = "v0.6.0"
 
 [[projects]]
   digest = "1:cba75ccf02d7b1d508f860e1f579a986e6b94ccc26841d6dd67d18cd1196e132"
@@ -89,12 +92,12 @@
   revision = "c2b33e84"
 
 [[projects]]
-  digest = "1:d93779dc5d7750c2afd77c2e162c728dacfacce1c32af63fd03f23b7376ea30f"
+  digest = "1:59794624db141f0f0a893d110111b962984c9844cf565efa91c35bedb882c9ff"
   name = "github.com/mattn/go-runewidth"
   packages = ["."]
   pruneopts = ""
-  revision = "18c3d09a134a52720932bbaa92c798a0ab111004"
-  version = "v0.0.7"
+  revision = "14e809f6d78fcf9f48ff9b70981472b64c05f754"
+  version = "v0.0.9"
 
 [[projects]]
   digest = "1:be76fb5b006046835859bbfd38adfc01574c672685fd5d4c6f0bce073ac16bfb"
@@ -137,12 +140,12 @@
   revision = "2caba252f4dc53eaf6b553000885530023f54623"
 
 [[projects]]
-  digest = "1:5a53f6ef09fb1ac261a97f8a72e8837ff53cbaa969022a6679da210e4cbe9b0f"
+  digest = "1:2efc9662a6a1ff28c65c84fc2f9030f13d3afecdb2ecad445f3b0c80e75fc281"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = ""
-  revision = "1f64d6156d11335c3f22d9330b0ad14fc1e789ce"
-  version = "v2.2.7"
+  revision = "53403b58ad1b561927d19068c655246f2db79d48"
+  version = "v2.2.8"
 
 [solve-meta]
   analyzer-name = "dep"

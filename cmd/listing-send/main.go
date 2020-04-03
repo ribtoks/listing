@@ -160,26 +160,27 @@ func parseFlags() (err error) {
 	return nil
 }
 
-func createSender() (sender gomail.SendCloser, err error) {
+func createSender() (gomail.SendCloser, error) {
 	if *dryRunFlag {
-		sender = &dryRunSender{out: *outFlag}
-	} else {
-		dialer, err := smtpDialer(*smtpServerFlag, *smtpUsernameFlag, *smtpPassFlag)
-		if err != nil {
-			return nil, err
-		}
+		return &dryRunSender{out: *outFlag}, nil
+	}
 
-		for i := 0; i < smtpRetryAttempts; i++ {
-			sender, err = dialer.Dial()
-			if err == nil {
-				log.Printf("Dialed to SMTP. server=%v", *smtpServerFlag)
-				break
-			} else {
-				log.Printf("Failed to dial SMTP. err=%v attempt=%v", err, i)
-				log.Printf("Sleeping before retry. interval=%v", smtpRetrySleep)
-				time.Sleep(smtpRetrySleep)
-			}
+	dialer, err := smtpDialer(*smtpServerFlag, *smtpUsernameFlag, *smtpPassFlag)
+	if err != nil {
+		return nil, err
+	}
+
+	var sender gomail.SendCloser
+	for i := 0; i < smtpRetryAttempts; i++ {
+		sender, err = dialer.Dial()
+		if err == nil {
+			log.Printf("Dialed to SMTP. server=%v", *smtpServerFlag)
+			break
+		} else {
+			log.Printf("Failed to dial SMTP. err=%v attempt=%v", err, i)
+			log.Printf("Sleeping before retry. interval=%v", smtpRetrySleep)
+			time.Sleep(smtpRetrySleep)
 		}
 	}
-	return
+	return sender, nil
 }
