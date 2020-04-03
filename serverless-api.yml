@@ -6,6 +6,7 @@ provider:
   runtime: go1.x
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
+  logRetentionInDays: 7
   memorySize: 128
   usagePlan:
     throttle:

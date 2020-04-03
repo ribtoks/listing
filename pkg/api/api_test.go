@@ -952,35 +952,20 @@ func TestPutSubscribersFailingStore(t *testing.T) {
 	}
 }
 
-func TestPutSubscribers(t *testing.T) {
-	newsletter := "TestNewsletter"
-
+func PutSubscribersBaseSuite(subscribers []*common.Subscriber, store common.SubscribersStore) (*http.Response, error) {
 	srv := http.NewServeMux()
-	store := db.NewSubscribersMapStore()
 	nr := NewTestResource(store, db.NewNotificationsMapStore())
 	nr.Setup(srv)
-	nr.AddNewsletters([]string{newsletter})
+	nr.AddNewsletters([]string{testNewsletter})
 
-	expectedEmails := make(map[string]bool)
-	var subscribers []*common.Subscriber
-	for i := 0; i < 10; i++ {
-		subscribers = append(subscribers, &common.Subscriber{
-			Newsletter:     newsletter,
-			Email:          fmt.Sprintf("foo%v@bar.com", i),
-			CreatedAt:      common.JsonTimeNow(),
-			UnsubscribedAt: incorrectTime,
-			ConfirmedAt:    incorrectTime,
-		})
-		expectedEmails[subscribers[i].Email] = true
-	}
 	data, err := json.Marshal(subscribers)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 
 	req, err := http.NewRequest("PUT", common.SubscribersEndpoint, bytes.NewBuffer(data))
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth("any username", apiToken)
@@ -989,17 +974,86 @@ func TestPutSubscribers(t *testing.T) {
 	srv.ServeHTTP(w, req)
 
 	resp := w.Result()
+	return resp, nil
+}
+
+func PutSubscribersSuite(subscribers []*common.Subscriber, t *testing.T) {
+	subscribersMap := make(map[string]*common.Subscriber)
+	for _, s := range subscribers {
+		subscribersMap[s.Email] = s
+	}
+	store := db.NewSubscribersMapStore()
+	resp, err := PutSubscribersBaseSuite(subscribers, store)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
 		t.Errorf("Unexpected status code: %d, body: %v", resp.StatusCode, string(body))
 	}
 
-	for k, _ := range expectedEmails {
-		if _, err := store.GetSubscriber(newsletter, k); err != nil {
+	for k, s := range subscribersMap {
+		es, err := store.GetSubscriber(testNewsletter, k)
+		if err != nil {
 			t.Errorf("Email not imported: %v", k)
 		}
+		if es.Confirmed() != s.Confirmed() {
+			t.Fatalf("Confirmed status does not match. email=%v", k)
+		}
+		if es.Unsubscribed() != s.Unsubscribed() {
+			t.Fatalf("Unsubscribed status does not match. email=%v", k)
+		}
 	}
+}
+
+func TestPutUnconfirmedSubscribers(t *testing.T) {
+	var subscribers []*common.Subscriber
+	for i := 0; i < 10; i++ {
+		s := &common.Subscriber{
+			Newsletter:     testNewsletter,
+			Email:          fmt.Sprintf("foo%v@bar.com", i),
+			CreatedAt:      common.JsonTimeNow(),
+			UnsubscribedAt: incorrectTime,
+			ConfirmedAt:    incorrectTime,
+		}
+		subscribers = append(subscribers, s)
+	}
+	PutSubscribersSuite(subscribers, t)
+}
+
+func TestPutConfirmedSubscribers(t *testing.T) {
+	var subscribers []*common.Subscriber
+	for i := 0; i < 10; i++ {
+		jt := common.JSONTime(time.Now().UTC().Add(-1 * time.Second))
+		s := &common.Subscriber{
+			Newsletter:     testNewsletter,
+			Email:          fmt.Sprintf("foo%v@bar.com", i),
+			CreatedAt:      jt,
+			UnsubscribedAt: incorrectTime,
+			ConfirmedAt:    incorrectTime,
+		}
+		s.ConfirmedAt = common.JSONTime(s.CreatedAt.Time().Add(1 * time.Second))
+		subscribers = append(subscribers, s)
+	}
+	PutSubscribersSuite(subscribers, t)
+}
+
+func TestPutUnsubscribedSubscribers(t *testing.T) {
+	var subscribers []*common.Subscriber
+	for i := 0; i < 10; i++ {
+		jt := common.JSONTime(time.Now().UTC().Add(-1 * time.Second))
+		s := &common.Subscriber{
+			Newsletter:     testNewsletter,
+			Email:          fmt.Sprintf("foo%v@bar.com", i),
+			CreatedAt:      jt,
+			UnsubscribedAt: incorrectTime,
+			ConfirmedAt:    incorrectTime,
+		}
+		s.UnsubscribedAt = common.JSONTime(s.CreatedAt.Time().Add(1 * time.Second))
+		subscribers = append(subscribers, s)
+	}
+	PutSubscribersSuite(subscribers, t)
 }
 
 func TestGetComplaintsUnauthorized(t *testing.T) {

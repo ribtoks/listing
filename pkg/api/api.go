@@ -131,7 +131,9 @@ func (nr *NewsletterResource) putSubscribers(w http.ResponseWriter, r *http.Requ
 			log.Printf("Skipping invalid email. value=%v", s.Email)
 			continue
 		}
-		s.CreatedAt = common.JsonTimeNow()
+		if !s.Confirmed() && !s.Unsubscribed() {
+			s.CreatedAt = common.JsonTimeNow()
+		}
 		ss = append(ss, s)
 	}
 
