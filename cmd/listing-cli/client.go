@@ -17,6 +17,7 @@ type listingClient struct {
 	complaints       map[string]bool
 	dryRun           bool
 	noUnconfirmed    bool
+	noConfirmed      bool
 	noUnsubscribed   bool
 	ignoreComplaints bool
 }

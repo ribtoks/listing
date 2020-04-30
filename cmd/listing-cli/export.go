@@ -52,6 +52,11 @@ func (c *listingClient) isSubscriberOK(s *common.Subscriber) bool {
 		return false
 	}
 
+	if c.noConfirmed && s.Confirmed() {
+		log.Printf("Skipping confirmed subscriber. created_at=%v confirmed_at=%v confirmed=%v", s.CreatedAt, s.ConfirmedAt, s.Confirmed())
+		return false
+	}
+
 	if _, ok := c.complaints[s.Email]; ok {
 		log.Printf("Skipping bounced or complained subscriber. email=%v", s.Email)
 		return false

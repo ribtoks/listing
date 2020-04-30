@@ -27,6 +27,7 @@ var (
 	helpFlag             = flag.Bool("help", false, "Print help")
 	dryRunFlag           = flag.Bool("dry-run", false, "Simulate selected action")
 	noUnconfirmedFlag    = flag.Bool("no-unconfirmed", false, "Do not export unconfirmed emails")
+	noConfirmedFlag      = flag.Bool("no-confirmed", false, "Do not export confirmed emails")
 	noUnsubscribedFlag   = flag.Bool("no-unsubscribed", false, "Do not export unsubscribed emails")
 	ignoreComplaintsFlag = flag.Bool("ignore-complaints", false, "Ignore bounces and complaints for export")
 )
@@ -38,10 +39,7 @@ const (
 	modeExport      = "export"
 	modeImport      = "import"
 	modeDelete      = "delete"
-)
-
-var (
-	supportedModes = [...]string{modeSubscribe, modeUnsubscribe, modeExport, modeImport, modeDelete}
+	modeFilter      = "filter"
 )
 
 func main() {
@@ -70,6 +68,7 @@ func main() {
 		complaints:       make(map[string]bool),
 		dryRun:           *dryRunFlag,
 		noUnconfirmed:    *noUnconfirmedFlag,
+		noConfirmed:      *noConfirmedFlag,
 		noUnsubscribed:   *noUnsubscribedFlag,
 		ignoreComplaints: *ignoreComplaintsFlag,
 	}
@@ -78,6 +77,11 @@ func main() {
 	case modeExport:
 		{
 			err = client.export(*newsletterFlag)
+		}
+	case modeFilter:
+		{
+			bytes, _ := ioutil.ReadAll(os.Stdin)
+			err = client.filter(bytes)
 		}
 	case modeSubscribe:
 		{
@@ -132,7 +136,7 @@ func parseFlags() (err error) {
 	switch *modeFlag {
 	case "":
 		err = errors.New("Mode is required")
-	case modeDelete, modeExport, modeImport, modeSubscribe, modeUnsubscribe:
+	case modeDelete, modeExport, modeImport, modeSubscribe, modeUnsubscribe, modeFilter:
 		err = nil
 	default:
 		err = fmt.Errorf("Mode %v is not supported", *modeFlag)
