@@ -85,16 +85,25 @@ func alternateUnsubscribe(ss []*common.Subscriber) {
 	}
 }
 
-func NewTestResource(subscribers common.SubscribersStore, notifications common.NotificationsStore) *api.NewsletterResource {
+func NewTestNewsResource(subscribers common.SubscribersStore, notifications common.NotificationsStore) *api.NewsletterResource {
 	newsletters := &api.NewsletterResource{
 		Subscribers:   subscribers,
 		Notifications: notifications,
 		Secret:        secret,
-		ApiToken:      apiToken,
 		Newsletters:   make(map[string]bool),
 		Mailer:        &DevNullMailer{},
 	}
 	return newsletters
+}
+
+func NewTestAdminResource(subscribers common.SubscribersStore, notifications common.NotificationsStore) *api.AdminResource {
+	admins := &api.AdminResource{
+		Subscribers:   subscribers,
+		Notifications: notifications,
+		APIToken:      apiToken,
+		Newsletters:   make(map[string]bool),
+	}
+	return admins
 }
 
 func testingHttpClient(handler http.HandlerFunc) (*http.Client, func()) {
@@ -130,7 +139,7 @@ func (rp *RawTestPrinter) Render() error {
 	return nil
 }
 
-func NewTestClient(resource *api.NewsletterResource, p Printer) (*httptest.Server, *listingClient) {
+func NewTestClient(resource api.ListingResource, p Printer) (*httptest.Server, *listingClient) {
 	mux := http.NewServeMux()
 	server := httptest.NewServer(mux)
 	resource.Setup(mux)
@@ -163,7 +172,7 @@ func TestExportSubscribedSubscribers(t *testing.T) {
 	ss, _ := store.Subscribers(testNewsletter)
 	alternateUnsubscribe(ss)
 
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -188,7 +197,7 @@ func TestExportConfirmedSubscribers(t *testing.T) {
 	ss, _ := store.Subscribers(testNewsletter)
 	alternateConfirm(ss)
 
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -211,7 +220,7 @@ func TestExportAllSubscribers(t *testing.T) {
 	store.AddSubscriber(testNewsletter, "email1@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email2@domain.com", testName)
 
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -229,7 +238,7 @@ func TestExportAllSubscribers(t *testing.T) {
 }
 
 func SubscribeSuite(t *testing.T, store common.SubscribersStore, dryRun bool) {
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestNewsResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -271,7 +280,7 @@ func UnsubscribeSuite(t *testing.T, dryRun bool) {
 	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestNewsResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -312,7 +321,7 @@ func TestExportEmptyNewsletter(t *testing.T) {
 	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -329,7 +338,7 @@ func TestExportDryRun(t *testing.T) {
 	store := db.NewSubscribersMapStore()
 	store.AddSubscriber(testNewsletter, testEmail, testName)
 
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -358,7 +367,7 @@ func ExportSubscribersComplaintsSuite(t *testing.T, p Printer, ignoreComplaints 
 	complaints.AddBounce("email2@domain.com", "no-reply@newsletter.com", true /*is transient*/)
 	complaints.AddComplaint("email3@domain.com", "no-reply@newsletter.com")
 
-	nr := NewTestResource(store, complaints)
+	nr := NewTestAdminResource(store, complaints)
 	nr.AddNewsletters([]string{testNewsletter})
 
 	srv, cli := NewTestClient(nr, p)
@@ -393,7 +402,7 @@ func TestExportSubscribersWithoutComplaints(t *testing.T) {
 }
 
 func TestSubscribeErrorStore(t *testing.T) {
-	nr := NewTestResource(NewFailingStore(), db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(NewFailingStore(), db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -407,7 +416,7 @@ func TestSubscribeErrorStore(t *testing.T) {
 }
 
 func TestUnsubscribeErrorStore(t *testing.T) {
-	nr := NewTestResource(NewFailingStore(), db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(NewFailingStore(), db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -421,7 +430,7 @@ func TestUnsubscribeErrorStore(t *testing.T) {
 }
 
 func TestSubscribeErrors(t *testing.T) {
-	nr := NewTestResource(db.NewSubscribersMapStore(), db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(db.NewSubscribersMapStore(), db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -440,7 +449,7 @@ func TestSubscribeErrors(t *testing.T) {
 }
 
 func TestUnsubscribeErrors(t *testing.T) {
-	nr := NewTestResource(db.NewSubscribersMapStore(), db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(db.NewSubscribersMapStore(), db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	p := NewRawTestPrinter()
@@ -460,7 +469,7 @@ func TestUnsubscribeErrors(t *testing.T) {
 
 func ImportSubscribersSuite(t *testing.T, dryRun bool) {
 	store := db.NewSubscribersMapStore()
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	srv, cli := NewTestClient(nr, NewRawTestPrinter())
@@ -517,7 +526,7 @@ func TestImportSubscribersDryRun(t *testing.T) {
 
 func TestImportSubscribersMalformedJson(t *testing.T) {
 	store := db.NewSubscribersMapStore()
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	srv, cli := NewTestClient(nr, NewRawTestPrinter())
@@ -550,7 +559,7 @@ func DeleteSubscribersSuite(t *testing.T, dryRun bool) {
 	store.AddSubscriber(testNewsletter, "email7@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "email8@domain.com", testName)
 	store.AddSubscriber(testNewsletter, "foo@bar.com", testName)
-	nr := NewTestResource(store, db.NewNotificationsMapStore())
+	nr := NewTestAdminResource(store, db.NewNotificationsMapStore())
 	nr.AddNewsletters([]string{testNewsletter})
 
 	srv, cli := NewTestClient(nr, NewRawTestPrinter())
