@@ -11,11 +11,9 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ses"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 	"github.com/ribtoks/listing/pkg/api"
 	"github.com/ribtoks/listing/pkg/db"
-	"github.com/ribtoks/listing/pkg/email"
 )
 
 var (
@@ -28,15 +26,10 @@ func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 }
 
 func main() {
-	secret := os.Getenv("TOKEN_SECRET")
-	subscribeRedirectURL := os.Getenv("SUBSCRIBE_REDIRECT_URL")
-	unsubscribeRedirectURL := os.Getenv("UNSUBSCRIBE_REDIRECT_URL")
-	confirmRedirectURL := os.Getenv("CONFIRM_REDIRECT_URL")
-	confirmURL := os.Getenv("CONFIRM_URL")
+	apiToken := os.Getenv("API_TOKEN")
 	subscribersTableName := os.Getenv("SUBSCRIBERS_TABLE")
 	notificationsTableName := os.Getenv("NOTIFICATIONS_TABLE")
 	supportedNewsletters := os.Getenv("SUPPORTED_NEWSLETTERS")
-	emailFrom := os.Getenv("EMAIL_FROM")
 
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(os.Getenv("AWS_REGION")),
@@ -48,23 +41,13 @@ func main() {
 
 	subscribers := db.NewSubscribersStore(subscribersTableName, sess)
 	notifications := db.NewNotificationsStore(notificationsTableName, sess)
-	mailer := &email.SESMailer{
-		Svc:    ses.New(sess),
-		Sender: emailFrom,
-		Secret: secret,
-	}
 
 	router := http.NewServeMux()
-	newsletter := &api.NewsletterResource{
-		Secret:                 secret,
-		SubscribeRedirectURL:   subscribeRedirectURL,
-		UnsubscribeRedirectURL: unsubscribeRedirectURL,
-		ConfirmRedirectURL:     confirmRedirectURL,
-		ConfirmURL:             confirmURL,
-		Subscribers:            subscribers,
-		Notifications:          notifications,
-		Mailer:                 mailer,
-		Newsletters:            make(map[string]bool),
+	newsletter := &api.AdminResource{
+		APIToken:      apiToken,
+		Subscribers:   subscribers,
+		Notifications: notifications,
+		Newsletters:   make(map[string]bool),
 	}
 
 	sn := strings.Split(supportedNewsletters, ";")

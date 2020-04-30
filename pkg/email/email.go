@@ -1,10 +1,11 @@
-package main
+package email
 
 import (
 	"bytes"
 	"log"
 	"net/url"
 	"strings"
+	"text/template"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -37,17 +38,22 @@ You are receiveing this email because somebody, hopefully you, subscribed to {{.
 `
 )
 
+var (
+	HtmlTemplate *template.Template
+	TextTemplate *template.Template
+)
+
 // SESMailer is an implementation of Mailer interface that works with AWS SES
 type SESMailer struct {
-	sender string
-	secret string
-	svc    *ses.SES
+	Sender string
+	Secret string
+	Svc    *ses.SES
 }
 
 var _ common.Mailer = (*SESMailer)(nil)
 
 func (sm *SESMailer) confirmURL(newsletter, email string, confirmBaseURL string) (string, error) {
-	token := common.Sign(sm.secret, email)
+	token := common.Sign(sm.Secret, email)
 	baseUrl, err := url.Parse(confirmBaseURL)
 	if err != nil {
 		log.Println("Malformed URL: ", err.Error())
@@ -85,13 +91,13 @@ func (sm *SESMailer) sendEmail(email, htmlBody, textBody string) error {
 				Data:    aws.String(Subject),
 			},
 		},
-		Source: aws.String(sm.sender),
+		Source: aws.String(sm.Sender),
 		// Uncomment to use a configuration set
 		//ConfigurationSetName: aws.String(ConfigurationSet),
 	}
 
 	// Attempt to send the email.
-	result, err := sm.svc.SendEmail(input)
+	result, err := sm.Svc.SendEmail(input)
 	log.Printf("Email send result=%v", result)
 
 	// Display error messages if they occur.
@@ -149,4 +155,9 @@ func (sm *SESMailer) SendConfirmation(newsletter, email, name, confirmBaseURL st
 	}
 
 	return sm.sendEmail(email, htmlBodyTpl.String(), textBodyTpl.String())
+}
+
+func init() {
+	HtmlTemplate = template.Must(template.New("HtmlBody").Parse(HTMLBody))
+	TextTemplate = template.Must(template.New("TextBody").Parse(TextBody))
 }

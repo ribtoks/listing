@@ -1,4 +1,4 @@
-package main
+package email
 
 const (
 	// HTMLBody is a template of the email used for
