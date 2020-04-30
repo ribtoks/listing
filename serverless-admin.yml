@@ -1,4 +1,4 @@
-service: listing
+service: listing-admin
 frameworkVersion: '>=1.28.0 <2.0.0'
 
 provider:
@@ -22,27 +22,12 @@ package:
     - ./**
 
 functions:
-  # "main" entry point into this application responsible for 
-  # collecting subscribers, storing them in the table and sending
-  # confirmation emails to them
   handler:
-    handler: bin/listing
+    handler: bin/ladmin
     package:
       include:
-        - ./bin/listing
+        - ./bin/ladmin
     events:
-      - http:
-          path: subscribe
-          method: POST
-          cors: true
-      - http:
-          path: unsubscribe
-          method: GET
-          cors: true
-      - http:
-          path: confirm
-          method: GET
-          cors: true
       - http:
           path: subscribers
           method: GET
@@ -74,11 +59,6 @@ functions:
           - { 'Fn::ImportValue': '${self:provider.stage}-SubscriptionsTableArn' }
       - Effect: Allow
         Action:
-          - "ses:SendEmail"
-          - "ses:SendRawEmail"
-        Resource: "arn:aws:ses:${self:provider.region}:*:identity/*"
-      - Effect: Allow
-        Action:
           - "dynamodb:DescribeTable"
           - "dynamodb:Query"
           - "dynamodb:Scan"
@@ -86,34 +66,10 @@ functions:
         Resource:
           - { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTableArn' }
     environment:
-      CONFIRM_URL: ${self:custom.secrets.confirmUrl}
-      EMAIL_FROM: ${self:custom.secrets.emailFrom}
-      TOKEN_SECRET: ${self:custom.secrets.tokenSecret}
-      SUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.subscribeRedirectUrl}
-      CONFIRM_REDIRECT_URL: ${self:custom.secrets.confirmRedirectUrl}
-      UNSUBSCRIBE_REDIRECT_URL: ${self:custom.secrets.unsubscribeRedirectUrl}
+      API_TOKEN: ${self:custom.secrets.apiToken}
       SUBSCRIBERS_TABLE: ${self:custom.subscribersTableName}
       NOTIFICATIONS_TABLE: ${self:custom.snsTableName}
       SUPPORTED_NEWSLETTERS: ${self:custom.secrets.supportedNewsletters}
-  # lambda used to handle bounce and complaint notifications from SES
-  sesnotify:
-    handler: bin/sesnotify
-    package:
-      include:
-        - ./bin/sesnotify
-    events:
-      - sns:
-          topicName: ${self:custom.snsTopicName}
-          arn: { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTopicArn' }
-    environment:
-      NOTIFICATIONS_TABLE: ${self:custom.snsTableName}
-    iamRoleStatements:
-      - Effect: Allow
-        Action:
-          - "dynamodb:DescribeTable"
-          - "dynamodb:PutItem"
-        Resource:
-          - { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTableArn' }
 
 custom:
   secrets: ${file(secrets.json)}

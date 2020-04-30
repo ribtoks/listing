@@ -31,22 +31,37 @@ Most of the properties are self-descriptive. Redirect URLs are urls where user w
 
 Config file `serverless-db.yml` describes resources that will not be frequently changed. Usually you would deploy them only once.
 
+Use `make deploy-db` or
+
 `serverless deploy --config serverless-db.yml`
 
-This command will deploy resources to `dev` stage and to `us-east-1` region so if you want to use something else, you have to add parameters `--stage dev --region "us-east-1"`.
+This command will deploy resources to `dev` stage and to `eu-west-1` region so if you want to use something else, you have to add parameters `--stage dev --region "eu-west-1"`.
 
 ## Deploy API
 
 Config file `serverless-api.yml` contains definitions of lambda functions written in Go. If you are a developer, you may want to redeploy them frequently during development.
 
-You can use `make deploy` to run this step or you can use 2 commands:
+You can use `make deploy-api` to run this step or you can use 2 commands:
 
 ```
 make build
 serverless deploy --config serverless-api.yml
 ```
 
-This command will deploy resources to `dev` stage and to `us-east-1` region so if you want to use something else, you have to add parameters `--stage dev --region "us-east-1"`.
+This command will deploy resources to `dev` stage and to `eu-west-1` region so if you want to use something else, you have to add parameters `--stage dev --region "eu-west-1"`.
+
+## Deploy Admin API
+
+Config file `serverless-admin.yml` contains definitions of lambda functions with Admin APIs like getting or setting subscribers. This functionality might be redeployed even more frequently than ordinary API
+
+You can use `make deploy-admin` to run this step or you can use 2 commands:
+
+```
+make build
+serverless deploy --config serverless-admin.yml
+```
+
+This command will deploy resources to `dev` stage and to `eu-west-1` region so if you want to use something else, you have to add parameters `--stage dev --region "eu-west-1"`.
 
 ## Configure confirm and redirect URLs
 
@@ -58,7 +73,7 @@ Go to AWS Console UI and in Lambda section find `listing-subscribe` function. Se
 
 In order to exit "sandbox" mode in AWS SES you need to have a procedure for handling bounces and complaints. *Listing* provides this functionality, but you have to do 1 manual action.
 
-Go to [AWS Console UI and set Bounce and Complaint](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-sns-notifications.html) SNS topic's ARN for your SES domain to the `listing-ses-notifications` topic. You can find it in `SES -> Domains -> (select your domain) -> Notifications`. Arn will be an output of `serverless deploy` command for `serverless-db.yml` config. Example of such ARN: `arn:aws:sns:us-east-1:1234567890:dev-listing-ses-notifications`.
+Go to [AWS Console UI and set Bounce and Complaint](https://docs.aws.amazon.com/ses/latest/DeveloperGuide/configure-sns-notifications.html) SNS topic's ARN for your SES domain to the `listing-ses-notifications` topic. You can find it in `SES -> Domains -> (select your domain) -> Notifications`. Arn will be an output of `serverless deploy` command for `serverless-db.yml` config. Example of such ARN: `arn:aws:sns:eu-west-1:1234567890:dev-listing-ses-notifications`.
 
 ## Configure redirect URLs to your website
 
