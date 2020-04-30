@@ -145,12 +145,14 @@ func parseFlags() (err error) {
 		return
 	}
 
-	switch *urlFlag {
-	case "":
-		err = errors.New("Url is required")
-	default:
-		if _, e := url.Parse(*urlFlag); e != nil {
-			err = fmt.Errorf("Failed to parse url. err=%v", e)
+	if *modeFlag != modeFilter {
+		switch *urlFlag {
+		case "":
+			err = errors.New("Url is required")
+		default:
+			if _, e := url.Parse(*urlFlag); e != nil {
+				err = fmt.Errorf("Failed to parse url. err=%v", e)
+			}
 		}
 	}
 	if err != nil {
