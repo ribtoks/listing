@@ -56,7 +56,7 @@ functions:
           - "dynamodb:DeleteItem"
           - "dynamodb:BatchWriteItem"
         Resource:
-          - { 'Fn::ImportValue': '${self:provider.stage}-SubscriptionsTableArn' }
+          - { 'Fn::ImportValue': '${self:provider.stage}-ListingSubscriptionsTableArn' }
       - Effect: Allow
         Action:
           - "dynamodb:DescribeTable"
@@ -64,7 +64,7 @@ functions:
           - "dynamodb:Scan"
           - "dynamodb:GetItem"
         Resource:
-          - { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTableArn' }
+          - { 'Fn::ImportValue': '${self:provider.stage}-ListingNotificationsTableArn' }
     environment:
       API_TOKEN: ${self:custom.secrets.apiToken}
       SUBSCRIBERS_TABLE: ${self:custom.subscribersTableName}

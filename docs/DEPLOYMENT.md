@@ -27,41 +27,21 @@ and edit it.
 
 Most of the properties are self-descriptive. Redirect URLs are urls where user will be redirected to after pressing "Confirm", "Subscribe" or "Unsubscribe" buttons. `confirmUrl` is an url of one of the lambda functions used for email confirmation (can be arbitrary since it's edited after deployment). `emailFrom` is an email that will be used to send this confirmation email. `supportedNewsletters` is semicolon-separated list of newsletter names. *Listing* will ignore all subscribe/unsubscribe requests for newsletters that are not in this list.
 
-## Deploy DB and SNS topic
+## Configure custom domain
 
-Config file `serverless-db.yml` describes resources that will not be frequently changed. Usually you would deploy them only once.
+If you are want to deploy listing that it would be available as `listing.yourdomain.com` you will need to do couple of actions:
 
-Use `make deploy-db` or
+*   Request custom certificate in AWS Certificate manager for region `us-east-1` (even if you plan to deploy to other regions) for your domain
+*   Make sure `secrets.json` from previous step has correct domain(s) configured
+*   Run `STAGE=dev REGION=eu-west-1 make create_domain` (replace stage and region with your preferences) - this has to be run only once per "lifetime"
 
-`serverless deploy --config serverless-db.yml`
+You can see those domains in API Gateway section of AWS Console.
 
-This command will deploy resources to `dev` stage and to `eu-west-1` region so if you want to use something else, you have to add parameters `--stage dev --region "eu-west-1"`.
+## Deploy listing
 
-## Deploy API
+`STAGE=dev REGION=eu-west-1 make deploy-all`
 
-Config file `serverless-api.yml` contains definitions of lambda functions written in Go. If you are a developer, you may want to redeploy them frequently during development.
-
-You can use `make deploy-api` to run this step or you can use 2 commands:
-
-```
-make build
-serverless deploy --config serverless-api.yml
-```
-
-This command will deploy resources to `dev` stage and to `eu-west-1` region so if you want to use something else, you have to add parameters `--stage dev --region "eu-west-1"`.
-
-## Deploy Admin API
-
-Config file `serverless-admin.yml` contains definitions of lambda functions with Admin APIs like getting or setting subscribers. This functionality might be redeployed even more frequently than ordinary API
-
-You can use `make deploy-admin` to run this step or you can use 2 commands:
-
-```
-make build
-serverless deploy --config serverless-admin.yml
-```
-
-This command will deploy resources to `dev` stage and to `eu-west-1` region so if you want to use something else, you have to add parameters `--stage dev --region "eu-west-1"`.
+This command will compile and deploy whole _listing_ to AWS in the said stage and region. In case you are making changes to API or to Admin parts, you can redeploy them separately from DB. Use commands `make deploy-db`, `make deploy-api` and `make deploy-admin` and their `make remove-xxx` counterparts to deploy and remove separate pieces.
 
 ## Configure confirm and redirect URLs
 

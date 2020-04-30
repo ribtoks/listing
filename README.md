@@ -70,6 +70,10 @@ See [full send documentation](https://github.com/ribtoks/listing/blob/master/doc
 
 ## Deployment
 
+One-liner:
+
+`STAGE=prod REGION=eu-west-1 make deploy-all`
+
 See [full documentation](https://github.com/ribtoks/listing/blob/master/docs/DEPLOYMENT.md).
 
 ## Testing

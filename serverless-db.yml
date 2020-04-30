@@ -57,7 +57,7 @@ resources:
           - SubscriptionsDynamoDBTable
           - Arn
       Export:
-        Name: ${self:provider.stage}-SubscriptionsTableArn
+        Name: ${self:provider.stage}-ListingSubscriptionsTableArn
     NotificationsTableArn:
       Description: The ARN of the notifications table
       Value:
@@ -65,13 +65,13 @@ resources:
           - SesNotificationsDynamoDBTable
           - Arn
       Export:
-        Name: ${self:provider.stage}-NotificationsTableArn
+        Name: ${self:provider.stage}-ListingNotificationsTableArn
     NotificationsTopicArn:
       Description: The ARN of the SNS topic
       Value:
         Ref: SESNotificationsTopic
       Export:
-        Name: ${self:provider.stage}-NotificationsTopicArn
+        Name: ${self:provider.stage}-ListingNotificationsTopicArn
 
 custom:
   subscribersTableName: ${opt:stage, 'dev'}-listing-subscribers

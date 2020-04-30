@@ -18,7 +18,7 @@ clean:
 	rm -rf ./bin ./vendor ./.serverless Gopkg.lock
 
 domain:
-	sls create_domain --stage '${STAGE}' --config serverless-api.yml
+	sls create_domain --stage '${STAGE}' --region '$(REGION)' --config serverless-api.yml
 
 deploy-db:
 	sls deploy --config serverless-db.yml --stage '$(STAGE)' --region '$(REGION)' --verbose
@@ -41,5 +41,5 @@ remove-admin:
 deploy-all: clean build deploy-db deploy-api deploy-admin
 	echo "Done for stage=${STAGE} region=${REGION}"
 
-remove-all: remove-db remove-api remove-admin
+remove-all: remove-api remove-admin remove-db
 	echo "Done for stage=${STAGE} region=${REGION}"

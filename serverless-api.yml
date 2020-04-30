@@ -56,7 +56,7 @@ functions:
           - "dynamodb:DeleteItem"
           - "dynamodb:BatchWriteItem"
         Resource:
-          - { 'Fn::ImportValue': '${self:provider.stage}-SubscriptionsTableArn' }
+          - { 'Fn::ImportValue': '${self:provider.stage}-ListingSubscriptionsTableArn' }
       - Effect: Allow
         Action:
           - "ses:SendEmail"
@@ -69,7 +69,7 @@ functions:
           - "dynamodb:Scan"
           - "dynamodb:GetItem"
         Resource:
-          - { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTableArn' }
+          - { 'Fn::ImportValue': '${self:provider.stage}-ListingNotificationsTableArn' }
     environment:
       CONFIRM_URL: ${self:custom.secrets.confirmUrl}
       EMAIL_FROM: ${self:custom.secrets.emailFrom}
@@ -89,7 +89,7 @@ functions:
     events:
       - sns:
           topicName: ${self:custom.snsTopicName}
-          arn: { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTopicArn' }
+          arn: { 'Fn::ImportValue': '${self:provider.stage}-ListingNotificationsTopicArn' }
     environment:
       NOTIFICATIONS_TABLE: ${self:custom.snsTableName}
     iamRoleStatements:
@@ -98,7 +98,7 @@ functions:
           - "dynamodb:DescribeTable"
           - "dynamodb:PutItem"
         Resource:
-          - { 'Fn::ImportValue': '${self:provider.stage}-NotificationsTableArn' }
+          - { 'Fn::ImportValue': '${self:provider.stage}-ListingNotificationsTableArn' }
 
 custom:
   secrets: ${file(secrets.json)}
