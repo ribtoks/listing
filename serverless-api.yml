@@ -15,6 +15,7 @@ provider:
 
 plugins:
   - serverless-iam-roles-per-function
+  - serverless-domain-manager
 
 package:
   individually: true
@@ -41,22 +42,6 @@ functions:
           cors: true
       - http:
           path: confirm
-          method: GET
-          cors: true
-      - http:
-          path: subscribers
-          method: GET
-          cors: true
-      - http:
-          path: subscribers
-          method: PUT
-          cors: true
-      - http:
-          path: subscribers
-          method: DELETE
-          cors: true
-      - http:
-          path: complaints
           method: GET
           cors: true
     iamRoleStatements:
@@ -123,4 +108,16 @@ custom:
   stages:
     - local
     - dev
+  domains:
+    prod: ${self:custom.secrets.prodDomain}
+    dev: ${self:custom.secrets.devDomain}
+  customDomain:
+    basePath: ''
+    domainName: ${self:custom.domains.${self:provider.stage}}
+    stage: ${self:provider.stage}
+    createRoute53Record: false
+    endpointType: edge
+  logRetentionInDays:
+    prod: 14
+    dev: 7
 

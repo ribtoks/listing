@@ -17,17 +17,29 @@ build:
 clean:
 	rm -rf ./bin ./vendor ./.serverless Gopkg.lock
 
+domain:
+	sls create_domain --stage '${STAGE}' --config serverless-api.yml
+
 deploy-db:
 	sls deploy --config serverless-db.yml --stage '$(STAGE)' --region '$(REGION)' --verbose
+
+remove-db:
+	sls remove --config serverless-db.yml --stage '$(STAGE)' --region '$(REGION)' --verbose
 
 deploy-api:
 	sls deploy --config serverless-api.yml --stage '$(STAGE)' --region '$(REGION)' --verbose
 
+remove-api:
+	sls remove --config serverless-api.yml --stage '$(STAGE)' --region '$(REGION)' --verbose
+
 deploy-admin:
 	sls deploy --config serverless-admin.yml --stage '$(STAGE)' --region '$(REGION)' --verbose
+
+remove-admin:
+	sls remove --config serverless-admin.yml --stage '$(STAGE)' --region '$(REGION)' --verbose
 
 deploy-all: clean build deploy-db deploy-api deploy-admin
 	echo "Done for stage=${STAGE} region=${REGION}"
 
-local: clean build
-	./scripts/deploy_local.sh
+remove-all: remove-db remove-api remove-admin
+	echo "Done for stage=${STAGE} region=${REGION}"
