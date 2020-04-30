@@ -160,7 +160,7 @@ func parseFlags() (err error) {
 	}
 
 	switch *modeFlag {
-	case modeExport, modeUnsubscribe:
+	case modeExport, modeUnsubscribe, modeFilter:
 		if *secretFlag == "" {
 			err = errors.New("Secret flag is required")
 		}
