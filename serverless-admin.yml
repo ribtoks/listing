@@ -6,7 +6,9 @@ provider:
   runtime: go1.x
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
-  logRetentionInDays: 7
+  logRetentionInDays: ${self:custom.logRetentionInDays.${self:provider.stage}, 7}
+  logs:
+    restApi: ${self:custom.apiGatewayLogs.${self:provider.stage}}
   memorySize: 128
   usagePlan:
     throttle:
@@ -79,4 +81,10 @@ custom:
   stages:
     - local
     - dev
+  apiGatewayLogs:
+    dev: true
+    prod: true
+  logRetentionInDays:
+    prod: 14
+    dev: 7
 
