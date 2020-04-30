@@ -29,13 +29,13 @@ Most of the properties are self-descriptive. Redirect URLs are urls where user w
 
 ## Configure custom domain
 
-If you are want to deploy listing that it would be available as `listing.yourdomain.com` you will need to do couple of actions:
+If you want to deploy _listing_ as `listing.yourdomain.com` you will need to do couple of things:
 
 *   Request custom certificate in AWS Certificate manager for region `us-east-1` (even if you plan to deploy to other regions) for your domain
 *   Make sure `secrets.json` from previous step has correct domain(s) configured
 *   Run `STAGE=dev REGION=eu-west-1 make create_domain` (replace stage and region with your preferences) - this has to be run only once per "lifetime"
 
-You can see those domains in API Gateway section of AWS Console.
+You can see those domains in API Gateway section of AWS Console. Currently _listing_ assumes you are using `dev-listing.yourdomain.com` for `dev` and `listing.yourdomain.com` for `prod`. You can change this logic in `serverless-api.yml` file in `customDomains` section.
 
 ## Deploy listing
 
